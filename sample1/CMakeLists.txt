@@ -66,7 +66,10 @@ find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 
 set(SOURCES
+    source/SplashScreen.h
     source/main.cpp 
 )
 add_executable(sample1 ${SOURCES})
 target_link_libraries(sample1 gfx ${SDL2_LIBRARIES})
+
+configure_file(res/hello.bmp ${CMAKE_BINARY_DIR}/bin/hello.bmp COPYONLY)

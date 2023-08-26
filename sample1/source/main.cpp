@@ -1,6 +1,7 @@
 // tuto: https://lazyfoo.net/tutorials/SDL/52_hello_mobile/android_linux/index.php
 // APK from linux : https://authmane512.medium.com/how-to-build-an-apk-from-command-line-without-ide-7260e1e22676
 // gdb on android: https://gist.github.com/sekkr1/6adf2741ed3bc741b53ab276d35fd047 / https://www.amongbytes.com/post/201804-debugging-on-android/
+#include "SplashScreen.h"
 
 #include <SDL2/SDL.h>
 #include <cstdio>
@@ -72,6 +73,12 @@ int main(int /*argc*/, char ** /*argv*/)
         // SDL_FillRect(gScreenSurface, NULL, SDL_MapRGB(gScreenSurface->format, 0xFF, 0xFF, 0xFF));
         // SDL_UpdateWindowSurface(gWindow);
 
+        SDLTextureWrapper splashScreen(gWindow, gRenderer);
+        if (!splashScreen.loadFromFile("hello.bmp"))
+        {
+            SDL_Log("Failed to load splash texture!\n");
+        }
+
         SDL_Event e;
         bool quit = false;
         while (!quit)
@@ -85,6 +92,7 @@ int main(int /*argc*/, char ** /*argv*/)
             SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
             SDL_RenderClear(gRenderer);
 
+            splashScreen.render((gScreenRect.w - splashScreen.getWidth()) / 2, (gScreenRect.h - splashScreen.getHeight()) / 2);
 
             SDL_RenderPresent(gRenderer);
         }
