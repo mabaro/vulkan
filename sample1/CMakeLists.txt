@@ -66,10 +66,14 @@ find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 
 set(SOURCES
-    source/SplashScreen.h
-    source/main.cpp 
+    source/sdl_hello/TextureWrapper.h
+    source/sdl_hello/main.cpp 
 )
-add_executable(sample1 ${SOURCES})
-target_link_libraries(sample1 gfx ${SDL2_LIBRARIES})
+add_executable(sdl_hello ${SOURCES})
+target_link_libraries(sdl_hello gfx ${SDL2_LIBRARIES})
 
 configure_file(res/hello.bmp ${CMAKE_BINARY_DIR}/bin/hello.bmp COPYONLY)
+
+file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR} "source/vk_hello/*.c*")
+add_executable(vk_hello ${SOURCES})
+target_link_libraries(vk_hello gfx ${SDL2_LIBRARIES})
