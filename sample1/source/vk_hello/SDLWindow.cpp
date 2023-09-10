@@ -72,7 +72,7 @@ SDLWindow::Run()
     bool quit = false;
     while (!quit) {
         while (SDL_PollEvent(&e)) {
-            printf("Event: %d\n", e.type);
+            // printf("Event: %d\n", e.type);
             if (e.type == SDL_JOYBUTTONDOWN) {
                 // SDL_JOYAXISMOTION = 0x600, /**< Joystick axis motion */
                 // SDL_JOYBALLMOTION,     /**< Joystick trackball motion */

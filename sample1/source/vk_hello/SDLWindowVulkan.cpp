@@ -7,11 +7,15 @@
 
 #include <iostream>
 
-#define VALIDATION_LAYERS USING(!IS_DEBUG)
+#define LIST_AVAILABLE_EXTENSIONS NOT_IN_USE
+
+/////////////////////////////////////////////////////////////////////////////////
 
 SDLWindowVulkan::SDLWindowVulkan()
     : SDLWindow()
-    , _validationLayers({ "VK_LAYER_KHRONOS_validation" })
+#if USING(VALIDATION_LAYERS)
+    , _validationLayers({ "VK_LAYER_KHRONOS_validation", VK_EXT_DEBUG_UTILS_EXTENSION_NAME })
+#endif   // #if USING(VALIDATION_LAYERS)
 {
 }
 
@@ -38,11 +42,13 @@ SDLWindowVulkan::Close()
 bool
 SDLWindowVulkan::_InitSurface()
 {
+#if USING(VALIDATION_LAYERS)
     bool validationLayersEnabled = !_validationLayers.empty();
     if (validationLayersEnabled && !_AreValidationLayersSupported(_validationLayers)) {
         LOG_ERROR("Validation layers enabled but not supported.");
         validationLayersEnabled = false;
     }
+#endif   // #if USING(VALIDATION_LAYERS)
 
     unsigned int requiredExtensionsCount = 0;
     SDL_Vulkan_GetInstanceExtensions(_window, &requiredExtensionsCount, nullptr);
@@ -53,6 +59,7 @@ SDLWindowVulkan::_InitSurface()
         std::cout << name << std::endl;
     }
 
+    if (USING(LIST_AVAILABLE_EXTENSIONS))
     {   // retrieve available extensions
         uint32_t extensionCount = 0;
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
@@ -76,10 +83,13 @@ SDLWindowVulkan::_InitSurface()
     VkInstanceCreateInfo instanceCreateInfo = {};
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceCreateInfo.pApplicationInfo = &appInfo;
+#if USING(VALIDATION_LAYERS)
     if (validationLayersEnabled) {
         instanceCreateInfo.enabledLayerCount = static_cast<uint32_t>(_validationLayers.size());
         instanceCreateInfo.ppEnabledLayerNames = _validationLayers.data();
-    } else {
+    } else
+#endif   // #if USING(VALIDATION_LAYERS)
+    {
         instanceCreateInfo.enabledLayerCount = 0;
     }
     instanceCreateInfo.enabledExtensionCount = requiredExtensionNames.size();
@@ -92,6 +102,8 @@ SDLWindowVulkan::_InitSurface()
 }
 
 /////////////////////////////////////////////////////////////////////////////////
+
+#if USING(VALIDATION_LAYERS)
 
 bool
 SDLWindowVulkan::_AreValidationLayersSupported(const std::vector<const char*>& validationLayers)
@@ -121,3 +133,65 @@ SDLWindowVulkan::_AreValidationLayersSupported(const std::vector<const char*>& v
 
     return true;
 }
+
+/////////////////////////////////////////////////////////////////////////////////
+
+static VKAPI_ATTR VkBool32 VKAPI_CALL
+debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT /*messageType*/,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* /*pUserData*/)
+{
+    if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+        std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+    }
+    return VK_FALSE;
+}
+
+VkResult
+CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+    const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
+{
+    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    if (func != nullptr) {
+        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+    } else {
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    }
+}
+
+bool
+SDLWindowVulkan::_InitDebugMessenger()
+{
+    VkDebugUtilsMessengerCreateInfoEXT createInfo {};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
+        | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+        | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    createInfo.pfnUserCallback = debugCallback;
+    createInfo.pUserData = nullptr;   // Optional
+
+    if (CreateDebugUtilsMessengerEXT(_instance, &createInfo, nullptr, &_debugMessenger) != VK_SUCCESS) {
+        throw std::runtime_error("failed to set up debug messenger!");
+    }
+    return false;
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+void
+DestroyDebugUtilsMessengerEXT(
+    VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
+{
+    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+    if (func != nullptr) {
+        func(instance, debugMessenger, pAllocator);
+    }
+}
+
+bool
+SDLWindowVulkan::_DeinitDebugMessenger()
+{
+    return false;
+}
+
+#endif   // #if USING(VALIDATION_LAYERS)
