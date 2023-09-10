@@ -12,3 +12,8 @@
             abort();                                                           \
         }                                                                      \
     } while (0)
+
+#define LOG_ERROR(X) fprintf(stderr, "Error: %s\n", X)
+
+#define IS_DEBUG defined(_NDEBUG)
+#define USING(_X_) _X_ && _X_
