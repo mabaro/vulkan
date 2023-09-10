@@ -27,12 +27,20 @@ SDLWindowVulkan::Init()
 
     result &= _InitSurface();
 
+#if USING(VALIDATION_LAYERS)
+    _InitDebugMessenger();
+#endif   // #if USING(VALIDATION_LAYERS)
+
     return result;
 }
 
 void
 SDLWindowVulkan::Close()
 {
+#if USING(VALIDATION_LAYERS)
+    _DeinitDebugMessenger();
+#endif   // #if USING(VALIDATION_LAYERS)
+
     vkDestroyInstance(_instance, nullptr);
     _instance = nullptr;
 
@@ -43,10 +51,9 @@ bool
 SDLWindowVulkan::_InitSurface()
 {
 #if USING(VALIDATION_LAYERS)
-    bool validationLayersEnabled = !_validationLayers.empty();
-    if (validationLayersEnabled && !_AreValidationLayersSupported(_validationLayers)) {
+    if (_AreValidationLayersEnabled() && !_AreValidationLayersSupported(_validationLayers)) {
         LOG_ERROR("Validation layers enabled but not supported.");
-        validationLayersEnabled = false;
+        _validationLayersEnabled = false;
     }
 #endif   // #if USING(VALIDATION_LAYERS)
 
@@ -59,8 +66,7 @@ SDLWindowVulkan::_InitSurface()
         std::cout << name << std::endl;
     }
 
-    if (USING(LIST_AVAILABLE_EXTENSIONS))
-    {   // retrieve available extensions
+    if (USING(LIST_AVAILABLE_EXTENSIONS)) {   // retrieve available extensions
         uint32_t extensionCount = 0;
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
         std::vector<VkExtensionProperties> availabelExtensionNames(extensionCount);
@@ -84,7 +90,7 @@ SDLWindowVulkan::_InitSurface()
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceCreateInfo.pApplicationInfo = &appInfo;
 #if USING(VALIDATION_LAYERS)
-    if (validationLayersEnabled) {
+    if (_AreValidationLayersEnabled()) {
         instanceCreateInfo.enabledLayerCount = static_cast<uint32_t>(_validationLayers.size());
         instanceCreateInfo.ppEnabledLayerNames = _validationLayers.data();
     } else
@@ -161,19 +167,22 @@ CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCre
 bool
 SDLWindowVulkan::_InitDebugMessenger()
 {
-    VkDebugUtilsMessengerCreateInfoEXT createInfo {};
-    createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
-        | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
-        | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-    createInfo.pfnUserCallback = debugCallback;
-    createInfo.pUserData = nullptr;   // Optional
+    if (_AreValidationLayersEnabled()) {
+        VkDebugUtilsMessengerCreateInfoEXT createInfo {};
+        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
+            | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+            | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+        createInfo.pfnUserCallback = debugCallback;
+        createInfo.pUserData = nullptr;   // Optional
 
-    if (CreateDebugUtilsMessengerEXT(_instance, &createInfo, nullptr, &_debugMessenger) != VK_SUCCESS) {
-        throw std::runtime_error("failed to set up debug messenger!");
+        if (CreateDebugUtilsMessengerEXT(_instance, &createInfo, nullptr, &_debugMessenger) != VK_SUCCESS) {
+            LOG_ERROR("failed to set up debug messenger!");
+            return false;
+        }
     }
-    return false;
+    return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -191,7 +200,10 @@ DestroyDebugUtilsMessengerEXT(
 bool
 SDLWindowVulkan::_DeinitDebugMessenger()
 {
-    return false;
+    if (_AreValidationLayersEnabled()) {
+        DestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
+    }
+    return true;
 }
 
 #endif   // #if USING(VALIDATION_LAYERS)

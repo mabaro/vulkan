@@ -15,5 +15,17 @@
 
 #define LOG_ERROR(X) fprintf(stderr, "Error: %s\n", X)
 
-#define IS_DEBUG defined(_NDEBUG)
-#define USING(_X_) _X_ && _X_
+/////////////////////////////////////////////////////////////////////////////////
+
+#define USING(_X_) _X_&& _X_
+#define IN_USE 1
+#define NOT_IN_USE 0
+
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef NDEBUG
+#define IS_DEBUG IN_USE
+#else
+#define IS_DEBUG NOT_IN_USE
+#endif
+

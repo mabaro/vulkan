@@ -18,7 +18,8 @@ class SDLWindowVulkan : public SDLWindow {
 #if USING(VALIDATION_LAYERS)
     std::vector<const char*> _validationLayers;
     VkDebugUtilsMessengerEXT _debugMessenger;
-#endif // #if USING(VALIDATION_LAYERS)
+    bool _validationLayersEnabled = true;
+#endif   // #if USING(VALIDATION_LAYERS)
 
 public:
     SDLWindowVulkan();
@@ -30,6 +31,7 @@ protected:
     bool _InitSurface();
 
 #if USING(VALIDATION_LAYERS)
+    inline bool _AreValidationLayersEnabled() const { return _validationLayersEnabled; }
     bool _AreValidationLayersSupported(const std::vector<const char*>& validationLayers);
     bool _InitDebugMessenger();
     bool _DeinitDebugMessenger();
