@@ -12,6 +12,7 @@ SDLWindowVulkan::Init()
 {
     bool result = true;
     result |= SDLWindow::Init();
+
     result &= _InitSurface();
 
     return result;
@@ -21,14 +22,27 @@ bool
 SDLWindowVulkan::_InitSurface()
 {
     unsigned int requiredExtensionsCount = 0;
-    SDL_Vulkan_GetInstanceExtensions(
-        _window, &requiredExtensionsCount, nullptr);
+    SDL_Vulkan_GetInstanceExtensions(_window, &requiredExtensionsCount, nullptr);
     std::vector<const char*> requiredExtensionNames(requiredExtensionsCount);
-    SDL_Vulkan_GetInstanceExtensions(
-        _window, &requiredExtensionsCount, requiredExtensionNames.data());
-    std::cout << "Required extensions("<<requiredExtensionsCount<<"):" << std::endl;
+    SDL_Vulkan_GetInstanceExtensions(_window, &requiredExtensionsCount, requiredExtensionNames.data());
+    std::cout << "Required extensions(" << requiredExtensionsCount << "):" << std::endl;
     for (const char* name : requiredExtensionNames) {
         std::cout << name << std::endl;
+    }
+
+    // requiredExtensionNames.push_back("myExtension");
+
+    {   // retrieve available extensions
+        uint32_t extensionCount = 0;
+        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+        std::vector<VkExtensionProperties> availabelExtensionNames(extensionCount);
+        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availabelExtensionNames.data());
+
+        std::cout << "available extensions(" << availabelExtensionNames.size() << "):\n";
+
+        for (const auto& extension : availabelExtensionNames) {
+            std::cout << '\t' << extension.extensionName << '\n';
+        }
     }
 
     VkApplicationInfo appInfo = {};
