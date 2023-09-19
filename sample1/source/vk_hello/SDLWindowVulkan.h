@@ -10,10 +10,13 @@
 #define VALIDATION_LAYERS USING(!IS_DEBUG)
 
 class SDLWindowVulkan : public SDLWindow {
-    VkInstance _instance;
-    VkDevice _device;
-    VkPhysicalDevice _physicalDevice;
-    VkSurfaceKHR _surface;
+    VkInstance _instance = VK_NULL_HANDLE;
+    VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
+    VkDevice _device = VK_NULL_HANDLE;
+    VkSurfaceKHR _surface = VK_NULL_HANDLE;
+
+    VkQueue _graphicsQueue;
+    VkQueue _presentQueue;
 
     VkDebugUtilsMessengerEXT _debugMessenger;
 
@@ -29,14 +32,15 @@ public:
     void Close() override;
 
 protected:
-    bool _InitSurface();
+    bool _CreateInstance();
     bool _SelectAdapter();
+    bool _CreateLogicalDevice();
+    bool _CreateSurface();
 
-    bool _IsPhysicalDeviceSuitable(VkPhysicalDevice device) const;
+    bool _IsPhysicalDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) const;
 
 #if USING(VALIDATION_LAYERS)
-        inline bool
-        _AreValidationLayersEnabled() const { return _validationLayersEnabled; }
+    inline bool _AreValidationLayersEnabled() const { return _validationLayersEnabled; }
     bool _AreInstanceLayersSupported(const std::vector<const char*>& validationLayers);
     void _PopulateDebugMessenger(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
     bool _InitDebugMessenger();
