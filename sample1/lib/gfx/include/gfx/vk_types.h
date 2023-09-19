@@ -41,7 +41,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static volatile struct LoggerConfiguration {
-    bool showFilename = false;
+    bool showFilename = true;
     FILE* forceOutput = nullptr;
 } s_loggerConfiguration;
 

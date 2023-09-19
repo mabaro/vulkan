@@ -28,7 +28,7 @@ SDLWindow::Init()
         return false;
     }
 
-    if (true) {   // workaround to show the window
+    if (false) {   // workaround to show the window
         SDL_Renderer* renderer = SDL_CreateRenderer(_window, -1, 0);
         SDL_RenderPresent(renderer);
         SDL_DestroyRenderer(renderer);
