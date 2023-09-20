@@ -1,5 +1,7 @@
 #include "SDLWindow.h"
 
+#include "core/core.h"
+
 bool
 SDLWindow::Init()
 {
@@ -63,7 +65,7 @@ SDLWindow::Draw()
 void
 SDLWindow::Run()
 {
-    assert(_window);
+    ASSERT(_window);
     if (_window == nullptr) {
         return;
     }

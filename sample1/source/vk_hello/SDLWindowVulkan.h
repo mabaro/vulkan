@@ -4,10 +4,9 @@
 
 #include "gfx/vk_types.h"
 
-#include <cassert>
 #include <vector>
 
-#define VALIDATION_LAYERS USING(!IS_DEBUG)
+#define VALIDATION_LAYERS USING(IS_DEBUG)
 
 class SDLWindowVulkan : public SDLWindow {
     VkInstance _instance = VK_NULL_HANDLE;

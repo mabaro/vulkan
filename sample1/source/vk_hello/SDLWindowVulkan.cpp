@@ -28,20 +28,20 @@ SDLWindowVulkan::Init()
 {
     bool result = true;
     result &= SDLWindow::Init();
-    assert(result);
+    ASSERT(result);
 
     result &= _CreateInstance();
-    assert(result);
+    ASSERT(result);
     result &= _CreateSurface();
-    assert(result);
+    ASSERT(result);
     result &= _SelectAdapter();
-    assert(result);
+    ASSERT(result);
     result &= _CreateLogicalDevice();
-    assert(result);
+    ASSERT(result);
 
 #if USING(VALIDATION_LAYERS)
     result &= _InitDebugMessenger();
-    assert(result);
+    ASSERT(result);
 #endif   // #if USING(VALIDATION_LAYERS)
 
     return result;
@@ -79,10 +79,10 @@ SDLWindowVulkan::_CreateInstance()
     {
         unsigned int requiredExtensionsCount = 0;
         bool success = SDL_Vulkan_GetInstanceExtensions(_window, &requiredExtensionsCount, nullptr);
-        assert(success);
+        ASSERT(success);
         requiredExtensionNames.resize(requiredExtensionsCount);
         success = SDL_Vulkan_GetInstanceExtensions(_window, &requiredExtensionsCount, requiredExtensionNames.data());
-        assert(success);
+        ASSERT(success);
     }
 
     requiredExtensionNames.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
@@ -94,11 +94,11 @@ SDLWindowVulkan::_CreateInstance()
     if (USING(LIST_AVAILABLE_EXTENSIONS)) {   // retrieve available extensions
         uint32_t extensionCount = 0;
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-        std::vector<VkExtensionProperties> availabelExtensionNames(extensionCount);
-        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availabelExtensionNames.data());
+        std::vector<VkExtensionProperties> availableExtensionNames(extensionCount);
+        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensionNames.data());
 
-        std::cout << "Available extensions(" << availabelExtensionNames.size() << "):\n";
-        for (const auto& extension : availabelExtensionNames) {
+        std::cout << "Available extensions(" << availableExtensionNames.size() << "):\n";
+        for (const auto& extension : availableExtensionNames) {
             std::cout << '\t' << extension.extensionName << '\n';
         }
     }
@@ -184,7 +184,7 @@ SDLWindowVulkan::_IsPhysicalDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR
 
     LOG_DEBUG("PhysDev: %s | %s\n", adapterProperties.deviceName, adapterProperties.deviceID);
 
-    assert(adapterProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
+    ASSERT(adapterProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
 
     QueueFamilyIndices queueFamily = findQueueFamilies(device, surface);
     return
@@ -196,7 +196,7 @@ SDLWindowVulkan::_IsPhysicalDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR
 bool
 SDLWindowVulkan::_SelectAdapter()
 {
-    assert(_surface != nullptr);
+    ASSERT(_surface != nullptr);
 
     uint32_t deviceCount = 0;
     vkEnumeratePhysicalDevices(_instance, &deviceCount, nullptr);
@@ -214,7 +214,7 @@ SDLWindowVulkan::_SelectAdapter()
             break;
         }
     }
-    assert(_physicalDevice != VK_NULL_HANDLE);
+    ASSERT(_physicalDevice != VK_NULL_HANDLE);
 
     if (_physicalDevice == VK_NULL_HANDLE) {
         LOG_ERROR("Couldn't select physical device");
@@ -229,13 +229,13 @@ SDLWindowVulkan::_SelectAdapter()
 bool
 SDLWindowVulkan::_CreateLogicalDevice()
 {
-    assert(_physicalDevice != nullptr && _surface != nullptr);
+    ASSERT(_physicalDevice != nullptr && _surface != nullptr);
 
     QueueFamilyIndices indices = findQueueFamilies(_physicalDevice, _surface);
 
     VkDeviceQueueCreateInfo queueCreateInfo {};
     queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    assert(indices.optGraphicsFamily.has_value());
+    ASSERT(indices.optGraphicsFamily.has_value());
     queueCreateInfo.queueFamilyIndex = indices.optGraphicsFamily.value();
     queueCreateInfo.queueCount = 1;
 
@@ -253,10 +253,12 @@ SDLWindowVulkan::_CreateLogicalDevice()
         createInfo.enabledExtensionCount = 0;
         createInfo.enabledLayerCount = 0;
         createInfo.ppEnabledLayerNames = nullptr;
+#if USING(VALIDATION_LAYERS)
         if (_AreValidationLayersEnabled()) {
             createInfo.enabledLayerCount = static_cast<uint32_t>(_validationLayers.size());
             createInfo.ppEnabledLayerNames = _validationLayers.data();
         }
+#endif   // #if USING(VALIDATION_LAYERS)
     }
     if (vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device) != VK_SUCCESS) {
         LOG_ERROR("Failed to create logical device!");
@@ -332,7 +334,7 @@ SDLWindowVulkan::_CreateSurface()
 bool
 SDLWindowVulkan::_AreInstanceLayersSupported(const std::vector<const char*>& validationLayers)
 {
-    assert(!validationLayers.empty());
+    ASSERT(!validationLayers.empty());
 
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -382,7 +384,7 @@ debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUti
         break;
     default:
         LOG_ERROR("unexpected message type");
-        assert(false);
+        ASSERT(false);
     }
 
     return VK_FALSE;
