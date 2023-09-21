@@ -105,3 +105,41 @@ assert_handler(const char* cond, const char* filename, uint32_t line)
 #else   // #if USING(IS_DEBUG)
 #define ASSERT(...)
 #endif   // #define ASSERT(X, ...)
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+#include <functional>
+
+namespace core {
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+bool
+isAligned(const T value, size_t alignmentBytes)
+{
+    T* valuePtr = &value;
+    return (valuePtr % alignmentBytes) == 0;
+}
+
+template <typename EnterFuncT = std::function<void(void)>, typename ExitFuncT = std::function<void(void)>>
+struct Scoped {
+private:
+    ExitFuncT _onExit;
+
+public:
+    Scoped(ExitFuncT onExit)
+        : _onExit(onExit)
+    {
+    }
+    Scoped(EnterFuncT onEnter, ExitFuncT onExit)
+        : _onExit(onExit)
+    {
+        onEnter();
+    }
+    ~Scoped() { _onExit(); }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+}   // namespace core {
