@@ -6,7 +6,7 @@
 int
 main(int /* argc */, char** /* argv */)
 {
-    SDLWindowVulkan window;
+    gfx::SDLWindowVulkan window;
     if (window.Init()) {
         window.Run();
         window.Close();

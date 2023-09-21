@@ -8,16 +8,26 @@
 
 #define VALIDATION_LAYERS USING(IS_DEBUG)
 
+namespace gfx {
+////////////////////////////////////////////////////////////////////////////////
+
 class SDLWindowVulkan : public SDLWindow {
     VkInstance _instance = VK_NULL_HANDLE;
     VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
     VkDevice _device = VK_NULL_HANDLE;
     VkSurfaceKHR _surface = VK_NULL_HANDLE;
 
-    VkQueue _graphicsQueue;
-    VkQueue _presentQueue;
+    VkSwapchainKHR _swapChain = VK_NULL_HANDLE;
+    VkFormat _swapChainImageFormat;
+    VkExtent2D _swapChainExtent;
+    std::vector<VkImage> _swapChainImages;
+
+    VkQueue _graphicsQueue = VK_NULL_HANDLE;
+    VkQueue _presentQueue = VK_NULL_HANDLE;
 
     VkDebugUtilsMessengerEXT _debugMessenger;
+
+    std::vector<const char*> _deviceExtensions;
 
 #if USING(VALIDATION_LAYERS)
     std::vector<const char*> _validationLayers;
@@ -35,6 +45,7 @@ protected:
     bool _SelectAdapter();
     bool _CreateLogicalDevice();
     bool _CreateSurface();
+    bool _CreateSwapchain();
 
     bool _IsPhysicalDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) const;
 
@@ -48,3 +59,4 @@ protected:
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+}   // namespace gfx {
