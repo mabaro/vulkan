@@ -65,15 +65,45 @@ add_subdirectory(lib/gfx)
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 
-set(SOURCES
+##########
+add_custom_target(hello_images)
+add_custom_command(TARGET hello_images PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E
+        copy ${CMAKE_SOURCE_DIR}/res/hello.bmp ${CMAKE_BINARY_DIR}/bin/)
+
+set(HELLO_SOURCES
     source/sdl_hello/TextureWrapper.h
     source/sdl_hello/main.cpp 
 )
-add_executable(sdl_hello ${SOURCES})
+add_executable(sdl_hello ${HELLO_SOURCES})
+add_dependencies(sdl_hello hello_images)
 target_link_libraries(sdl_hello gfx ${SDL2_LIBRARIES})
 
-configure_file(res/hello.bmp ${CMAKE_BINARY_DIR}/bin/hello.bmp COPYONLY)
+##########
 
-file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR} "source/vk_hello/*.c*")
-add_executable(vk_hello ${SOURCES})
+set(SPIRVTOOLS ${CMAKE_CURRENT_SOURCE_DIR}/tools/linux/bin)
+set(GLSLCOMPILER ${SPIRVTOOLS}/glslc)
+
+add_custom_target(shaders)
+file(GLOB ShaderFiles 
+    ${CMAKE_SOURCE_DIR}/res/shaders/*.frag
+    ${CMAKE_SOURCE_DIR}/res/shaders/*.vert)
+
+# add_custom_command(TARGET shaders PRE_BUILD
+#                  COMMAND ${CMAKE_COMMAND} -E copy ${shaderFile} ${CMAKE_BINARY_DIR}/bin/shaders/)
+add_custom_command(TARGET shaders PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/shaders)
+foreach(shaderFile ${ShaderFiles})
+    get_filename_component(FILENAME ${shaderFile} NAME)
+    message("Adding shader: ${CMAKE_BINARY_DIR}/bin/shaders/${FILENAME}.spv")
+    add_custom_command(TARGET shaders PRE_BUILD
+        # OUTPUT  ${FILENAME}.spv          # Treated as relative to CMAKE_CURRENT_BINARY_DIR
+        COMMAND ${GLSLCOMPILER} ${shaderFile} -o ${CMAKE_BINARY_DIR}/bin/shaders/${FILENAME}.spv
+        DEPENDS ${shaderFile} # Treated as relative to CMAKE_CURRENT_SOURCE_DIR
+    )
+endforeach()
+
+file(GLOB_RECURSE VK_HELLO_SOURCES RELATIVE ${CMAKE_SOURCE_DIR} "source/vk_hello/*.c*")
+add_executable(vk_hello ${VK_HELLO_SOURCES})
+add_dependencies(vk_hello shaders)
 target_link_libraries(vk_hello gfx ${SDL2_LIBRARIES} vulkan)
