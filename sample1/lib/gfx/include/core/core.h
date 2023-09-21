@@ -16,7 +16,7 @@
 
 #if !defined(NDEBUG)
 #define IS_DEBUG IN_USE
-//#warning "This is a DEBUG build"
+// #warning "This is a DEBUG build"
 #else
 #define IS_DEBUG NOT_IN_USE
 #endif
@@ -35,23 +35,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 namespace core {
 namespace impl {
-    static volatile struct LoggerConfiguration {
-        bool showFilename = true;
-        FILE* forceOutput = nullptr;
-    } s_loggerConfiguration;
+static volatile struct LoggerConfiguration {
+    bool  showFilename = true;
+    FILE* forceOutput  = nullptr;
+} s_loggerConfiguration;
 
-    template <typename... T>
-    static inline void LogFormatter(
-        FILE* output, const char* filename, uint32_t line, const char* level, const char* format, T&&... args)
-    {
-        output = s_loggerConfiguration.forceOutput != nullptr ? s_loggerConfiguration.forceOutput : output;
-        if (s_loggerConfiguration.showFilename) {
-            fprintf(output, "%s:%d: ", filename, line);
-        }
-        fprintf(output, "[%s]: ", level);
-        fprintf(output, format, std::forward<T>(args)...);
-        fprintf(output, "\n");
+template <typename... T>
+static inline void
+LogFormatter(FILE* output, const char* filename, uint32_t line, const char* level, const char* format, T&&... args)
+{
+    output = s_loggerConfiguration.forceOutput != nullptr ? s_loggerConfiguration.forceOutput : output;
+    if (s_loggerConfiguration.showFilename) {
+        fprintf(output, "%s:%d: ", filename, line);
     }
+    fprintf(output, "[%s]: ", level);
+    fprintf(output, format, std::forward<T>(args)...);
+    fprintf(output, "\n");
+}
 
 }   // impl
 }   // namespace
@@ -68,9 +68,9 @@ namespace impl {
 /////////////////////////////////////////////////////////////////////////////////
 
 #if USING(ASSERT_ENFORCE)
-#define HALT()\
-    do {\
-        abort();\
+#define HALT()   \
+    do {         \
+        abort(); \
     } while (1)
 #else   // #if USING(ASSERT_ENFORCE)
 #define HALT()
@@ -78,20 +78,29 @@ namespace impl {
 
 namespace core {
 namespace impl {
-    inline void assert_handler(const char* cond, const char* filename, uint32_t line)
-    {
-        fprintf(stderr, "%s:%d: Assertion failed: [%s]\n", filename, line, cond);
-    }
+inline void
+assert_handler(const char* cond, const char* filename, uint32_t line)
+{
+    fprintf(stderr, "%s:%d: Assertion failed: [%s]\n", filename, line, cond);
+}
 }   // impl
 }   // namespace
 
 #if USING(IS_DEBUG)
-#define ASSERT(cond) \
-    do { \
-        if (!(cond)) { \
+#define ASSERT(cond)                                               \
+    do {                                                           \
+        if (!(cond)) {                                             \
             core::impl::assert_handler(#cond, __FILE__, __LINE__); \
-            HALT(); \
-        } \
+            HALT();                                                \
+        }                                                          \
+    } while (0)
+#define ASSERT_MSG(cond, msg, ...)                                 \
+    do {                                                           \
+        if (!(cond)) {                                             \
+            core::impl::assert_handler(#cond, __FILE__, __LINE__); \
+            LOG_ERROR(msg, ##__VA_ARGS__);                         \
+            HALT();                                                \
+        }                                                          \
     } while (0)
 #else   // #if USING(IS_DEBUG)
 #define ASSERT(...)
