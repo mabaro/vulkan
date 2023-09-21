@@ -4,6 +4,10 @@ BasedOnStyle: Webkit
 IndentWidth: 4
 NamespaceIndentation: None
 
+BraceWrapping:
+  AfterEnum: true
+AllowShortEnumsOnASingleLine: false
+
 # Must be 80 characters or less!
 ColumnLimit: 120
 # does (int) x instead of (int)x
