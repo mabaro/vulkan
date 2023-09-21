@@ -16,7 +16,7 @@
 
 #if !defined(NDEBUG)
 #define IS_DEBUG IN_USE
-#warning "This is a DEBUG build"
+//#warning "This is a DEBUG build"
 #else
 #define IS_DEBUG NOT_IN_USE
 #endif
