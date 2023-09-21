@@ -1,0 +1,30 @@
+---
+# options: https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+BasedOnStyle: Webkit
+IndentWidth: 4
+NamespaceIndentation: None
+
+# Must be 80 characters or less!
+ColumnLimit: 80
+# does (int) x instead of (int)x
+SpaceAfterCStyleCast: false
+# spaces, not tabs!
+UseTab: Never
+# if (x) doStuff()  is not allowed, bad style
+AllowShortIfStatementsOnASingleLine: false
+# 
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignEscapedNewlines: true
+
+AlignTrailingComments: true
+SpacesBeforeTrailingComments: 3
+# change the next line to All for Alistair's textbook style
+AlwaysBreakAfterReturnType: TopLevelDefinitions
+BreakBeforeBinaryOperators: All
+Cpp11BracedListStyle: true
+#  #define SHORT_NAME       42
+#  #define LONGER_NAME      0x007f   # does nice spacing for macros
+AlignConsecutiveMacros: Consecutive
+# use \n instead of \r\n
+UseCRLF: false
