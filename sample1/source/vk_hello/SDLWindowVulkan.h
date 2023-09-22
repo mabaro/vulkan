@@ -36,6 +36,10 @@ class SDLWindowVulkan : public SDLWindow {
     std::vector<VkImage>     _swapChainImages;
     std::vector<VkImageView> _swapChainImageViews;
 
+    VkRenderPass     _renderPass;
+    VkPipelineLayout _pipelineLayout;
+    VkPipeline       _graphicsPipeline;
+
 public:
     SDLWindowVulkan();
 
@@ -49,6 +53,7 @@ protected:
     bool _CreateSurface();
     bool _CreateSwapchain();
     bool _CreateImageViews();
+    bool _CreateRenderPass();
     bool _CreateGraphicsPipeline();
 
     bool _IsPhysicalDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) const;
