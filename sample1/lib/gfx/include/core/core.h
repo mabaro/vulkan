@@ -10,7 +10,7 @@
 
 /////////////////////////////////////////////////////////////////////////////////
 
-#define ASSERT_ENFORCE NOT_IN_USE
+#define FAIL_ABORT NOT_IN_USE
 
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -68,18 +68,26 @@ LogFormatter(FILE* output, const char* filename, uint32_t line, const char* leve
 /////////////////////////////////////////////////////////////////////////////////
 
 #include "core/debug_break/debugbreak.h"
+#if USING(IS_DEBUG)
 #define DebugBreak() debug_break()
+#else   // #if USING(IS_DEBUG)
+#define DebugBreak()
+#endif   // #else   // #if USING(IS_DEBUG)
 
-#if USING(ASSERT_ENFORCE)
-#define HALT()   \
-    do {         \
-        abort(); \
+#if USING(FAIL_ABORT)
+#define HALT()        \
+    do {              \
+        DebugBreak(); \
+        abort();      \
     } while (1)
-#else   // #if USING(ASSERT_ENFORCE)
+#else   // #if USING(FAIL_ABORT)
 #define HALT() DebugBreak()
-#endif   // #else   // #if USING(ASSERT_ENFORCE)
+#endif   // #else   // #if USING(FAIL_ABORT)
 
-    namespace core {
+
+////////////////////////////////////////////////////////////////////////////////
+
+namespace core {
 namespace impl {
 inline void
 assert_handler(const char* cond, const char* filename, uint32_t line)
