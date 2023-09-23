@@ -101,13 +101,13 @@ SDLWindowVulkan::Close()
 void
 SDLWindowVulkan::_DrawFrame()
 {
-    const uint32_t currentFrame = _currentFrameIndex++ % MAX_FRAMES_IN_FLIGHT;
-    
     SDLWindow::_DrawFrame();
+
+    const uint32_t currentFrame = _currentFrameIndex++ % MAX_FRAMES_IN_FLIGHT;
+    LOG_DEBUG("Draw: %d", _currentFrameIndex);
 
     const uint64_t fenceTimeout = UINT64_MAX;
     vkWaitForFences(_device, 1, &_inFlightFences[currentFrame], VK_TRUE, fenceTimeout);
-    vkResetFences(_device, 1, &_inFlightFences[currentFrame]);
 
     uint32_t swapchainIndex;
     {
@@ -120,6 +120,9 @@ SDLWindowVulkan::_DrawFrame()
             LOG_ERROR("failed to acquire swap chain image!");
         }
     }
+
+    // only reset if we are submitting work to avoid deadlock due to no signaling
+    vkResetFences(_device, 1, &_inFlightFences[currentFrame]);
 
     VkCommandBuffer commandBuffer = _commandBuffers[currentFrame];
     // VkCommandBufferResetFlagBits::VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT
@@ -186,6 +189,7 @@ void
 SDLWindowVulkan::_OnResize(uint32_t width, uint32_t height)
 {
     SDLWindow::_OnResize(width, height);
+
     _RecreateSwapChain();
 }
 
