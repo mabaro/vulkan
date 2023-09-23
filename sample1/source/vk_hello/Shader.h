@@ -17,7 +17,7 @@ readFile(const std::string& filename)
 
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
     if (!file.is_open()) {
-        LOG_ERROR("Couldn't open the file '%s'", filename);
+        LOG_ERROR("Couldn't open the file '%s'", filename.c_str());
         return buffer;
     }
 

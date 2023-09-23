@@ -12,6 +12,7 @@
 #include <optional>
 #include <set>
 
+
 #define LIST_AVAILABLE_EXTENSIONS NOT_IN_USE
 
 namespace gfx {
@@ -181,23 +182,21 @@ SDLWindowVulkan::_OnMainLoopExit()
 {
     // need to wait for any async processes
     vkDeviceWaitIdle(_device);
-}
+    }
 
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
 
-void
-SDLWindowVulkan::_OnResize(uint32_t width, uint32_t height)
-{
-    SDLWindow::_OnResize(width, height);
+    void SDLWindowVulkan::_OnResize(uint32_t width, uint32_t height)
+    {
+        SDLWindow::_OnResize(width, height);
 
-    _RecreateSwapChain();
-}
+        _RecreateSwapChain();
+    }
 
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
 
-bool
-SDLWindowVulkan::_CreateInstance()
-{
+    bool SDLWindowVulkan::_CreateInstance()
+    {
 #if USING(VALIDATION_LAYERS)
     if (_AreValidationLayersEnabled() && !_AreInstanceLayersSupported(_validationLayers)) {
         LOG_WARN("Validation layers enabled but not supported.");
@@ -208,8 +207,9 @@ SDLWindowVulkan::_CreateInstance()
     std::vector<const char*> requiredExtensionNames;
     {
         unsigned int requiredExtensionsCount = 0;
-        bool         success = SDL_Vulkan_GetInstanceExtensions(_window, &requiredExtensionsCount, nullptr);
+        bool   success = SDL_Vulkan_GetInstanceExtensions(_window, &requiredExtensionsCount, nullptr);
         ASSERT(success);
+        UNUSED(success);
         requiredExtensionNames.resize(requiredExtensionsCount);
         success = SDL_Vulkan_GetInstanceExtensions(_window, &requiredExtensionsCount, requiredExtensionNames.data());
         ASSERT(success);
@@ -692,15 +692,15 @@ SDLWindowVulkan::_CreateRenderPass()
     colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     colorAttachment.finalLayout   = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
+    const VkAttachmentReference colorAttachmentRef {
+        .attachment = 0,
+        .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    };
+
     VkSubpassDescription subpass {};
     {
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-        VkAttachmentReference colorAttachmentRef {};
-        {
-            colorAttachmentRef.attachment = 0;
-            colorAttachmentRef.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        }
         // shader will write into this attachment with the following reference
         // layout(location = 0) out vec4 outColor
         subpass.colorAttachmentCount    = 1;
@@ -718,18 +718,16 @@ SDLWindowVulkan::_CreateRenderPass()
     renderPassInfo.pAttachments    = &colorAttachment;
     renderPassInfo.subpassCount    = 1;
     renderPassInfo.pSubpasses      = &subpass;
-    {
-        VkSubpassDependency dependency {};
-        dependency.srcSubpass    = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass    = 0;
-        dependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.srcAccessMask = 0;
-        dependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-        renderPassInfo.dependencyCount = 1;
-        renderPassInfo.pDependencies   = &dependency;
-    }
+    const VkSubpassDependency dependency {
+        .srcSubpass    = VK_SUBPASS_EXTERNAL,
+        .dstSubpass    = 0,
+        .srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .srcAccessMask = 0,
+        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+    };
+    renderPassInfo.dependencyCount = 1;
+    renderPassInfo.pDependencies   = &dependency;
 
     if (vkCreateRenderPass(_device, &renderPassInfo, nullptr, &_renderPass) != VK_SUCCESS) {
         LOG_ERROR("failed to create render pass!");
