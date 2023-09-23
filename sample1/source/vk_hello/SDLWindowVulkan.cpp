@@ -719,12 +719,13 @@ SDLWindowVulkan::_CreateRenderPass()
     renderPassInfo.subpassCount    = 1;
     renderPassInfo.pSubpasses      = &subpass;
     const VkSubpassDependency dependency {
-        .srcSubpass    = VK_SUBPASS_EXTERNAL,
-        .dstSubpass    = 0,
-        .srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        .dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        .srcAccessMask = 0,
-        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .srcSubpass      = VK_SUBPASS_EXTERNAL,
+        .dstSubpass      = 0,
+        .srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .srcAccessMask   = 0,
+        .dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dependencyFlags = 0,
     };
     renderPassInfo.dependencyCount = 1;
     renderPassInfo.pDependencies   = &dependency;
@@ -987,6 +988,8 @@ SDLWindowVulkan::_CreateCommandBuffer()
 bool
 SDLWindowVulkan::_RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t swapchainIndex)
 {
+    const float animatedValue = _currentFrameIndex / 255.f;
+
     VkCommandBufferBeginInfo beginInfo {};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -1012,25 +1015,43 @@ SDLWindowVulkan::_RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t sw
         renderPassInfo.renderPass  = _renderPass;
         renderPassInfo.framebuffer = _swapChainFramebuffers[swapchainIndex];
 
-        renderPassInfo.renderArea.offset = {0, 0};
-        renderPassInfo.renderArea.extent = _swapChainExtent;
+        const float      ratio = 0.8f;
+        const VkExtent2D renderAreaExtent {
+            (uint32_t)(ratio * (1.f - animatedValue) * _swapChainExtent.width),
+            (uint32_t)(ratio * (1.f - animatedValue) * _swapChainExtent.height),
+        };
+        const VkOffset2D renderAreaOffset {
+            (int32_t)(( 0.5f ) * (_swapChainExtent.width - renderAreaExtent.width)),
+            (int32_t)(( 0.5f ) * (_swapChainExtent.height - renderAreaExtent.height)),
+        };
+        renderPassInfo.renderArea.offset = renderAreaOffset;
+        renderPassInfo.renderArea.extent = renderAreaExtent;
 
-        VkClearValue clearColor        = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+        const float        clearColorValue   = 0.25f * animatedValue;
+        VkClearValue       clearColor        = {{{clearColorValue, clearColorValue, clearColorValue, 1.0f}}};
         renderPassInfo.clearValueCount = 1;
         renderPassInfo.pClearValues    = &clearColor;
 
         VkViewport viewport {};
-        viewport.x        = 0.0f;
-        viewport.y        = 0.0f;
+        viewport.x        = static_cast<float>(0);
+        viewport.y        = static_cast<float>(0);
         viewport.width    = static_cast<float>(_swapChainExtent.width);
         viewport.height   = static_cast<float>(_swapChainExtent.height);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
+        const VkOffset2D scissorOffset {
+            (int32_t)(0.2f * animatedValue * _swapChainExtent.width),
+            (int32_t)(0.2f * animatedValue * _swapChainExtent.height),
+        };
+        const VkExtent2D scissorExtent {
+            (uint32_t)(0.8f * (1.f - animatedValue )* _swapChainExtent.width),
+            (uint32_t)(0.8f * (1.f - animatedValue )* _swapChainExtent.height),
+        };
         VkRect2D scissor {};
-        scissor.offset = {0, 0};
-        scissor.extent = _swapChainExtent;
+        scissor.offset = scissorOffset;
+        scissor.extent = scissorExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
         {
