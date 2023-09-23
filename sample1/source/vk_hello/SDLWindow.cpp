@@ -2,6 +2,8 @@
 
 #include "core/core.h"
 
+////////////////////////////////////////////////////////////////////////////////
+
 bool
 SDLWindow::Init()
 {
@@ -20,11 +22,11 @@ SDLWindow::Init()
         _screenRect.h = displayMode.h >> 1;
     }
 
-    const SDL_WindowFlags windowFlags { SDL_WINDOW_VULKAN };
-    _window = SDL_CreateWindow("Vulkan Hello", SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED,        // window pos
-        _screenRect.w, _screenRect.h,   // window size
-        windowFlags);
+    const uint32_t windowFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE;
+    _window                    = SDL_CreateWindow("Vulkan Hello", SDL_WINDOWPOS_UNDEFINED,
+                           SDL_WINDOWPOS_UNDEFINED,        // window pos
+                           _screenRect.w, _screenRect.h,   // window size
+                           windowFlags);
     if (_window == NULL) {
         SDL_Log("Window could not be created! SDL Error: %s\n", SDL_GetError());
         return false;
@@ -71,6 +73,14 @@ SDLWindow::_OnMainLoopExit()
 ////////////////////////////////////////////////////////////////////////////////
 
 void
+SDLWindow::_OnResize(uint32_t /* width */, uint32_t /* height */)
+{
+    // nothing
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void
 SDLWindow::Run()
 {
     ASSERT(_window);
@@ -79,7 +89,7 @@ SDLWindow::Run()
     }
 
     SDL_Event e;
-    bool quit = false;
+    bool      quit = false;
     while (!quit) {
         while (SDL_PollEvent(&e)) {
             // printf("Event: %d\n", e.type);
@@ -92,9 +102,7 @@ SDLWindow::Run()
                 // SDL_JOYDEVICEADDED,    /**< A new joystick has been inserted
                 // into the system */ SDL_JOYDEVICEREMOVED,  /**< An opened
                 // joystick has been removed */
-            } else if (e.type == SDL_MOUSEMOTION
-                || e.type == SDL_MOUSEBUTTONDOWN
-                || e.type == SDL_MOUSEBUTTONUP) {
+            } else if (e.type == SDL_MOUSEMOTION || e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) {
                 int x, y;
                 SDL_GetMouseState(&x, &y);
                 switch (e.type) {
@@ -114,13 +122,26 @@ SDLWindow::Run()
                 if (e.key.keysym.sym == SDLK_ESCAPE) {
                     quit = true;
                 }
-            }
-            if (e.type == SDL_QUIT)
-                quit = true;
+            } else if (e.type == SDL_WINDOWEVENT){
+                if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                    _OnResize(e.window.data1, e.window.data2);
+                } else if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
+                    _OnResize(e.window.data1, e.window.data2);
+                }
+                } else if (e.type == SDL_QUIT)
+                    quit = true;
         }
 
         _DrawFrame();
     }
 
     _OnMainLoopExit();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void
+Window::_OnResize(uint32_t /*width*/, uint32_t /*height*/)
+{
+    // nothing
 }

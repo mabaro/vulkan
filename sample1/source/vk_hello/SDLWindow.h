@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SDL2/SDL.h>
-#include <cstdio>
 
 class Window {
 public:
@@ -18,6 +17,8 @@ protected:
     //! Will be called when the main loop is finished
     //! in order to wait for any ongoing async processes
     virtual void _OnMainLoopExit() = 0;
+
+    virtual void _OnResize(uint32_t width, uint32_t height) = 0;
 };
 
 class SDLWindow : public Window {
@@ -42,4 +43,6 @@ public:
 protected:
     void _DrawFrame() override;
     void _OnMainLoopExit() override;
+
+    void _OnResize(uint32_t width, uint32_t height) override;
 };

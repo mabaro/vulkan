@@ -166,6 +166,15 @@ SDLWindowVulkan::_OnMainLoopExit()
 
 ////////////////////////////////////////////////////////////////////////////////
 
+void
+SDLWindowVulkan::_OnResize(uint32_t width, uint32_t height)
+{
+    SDLWindow::_OnResize(width, height);
+    _RecreateSwapChain();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 bool
 SDLWindowVulkan::_CreateInstance()
 {

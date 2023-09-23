@@ -60,6 +60,7 @@ public:
 protected:
     void _DrawFrame() override;
     void _OnMainLoopExit() override;
+    void _OnResize(uint32_t width, uint32_t height) override;
 
 protected:
     bool _CreateInstance();
