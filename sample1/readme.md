@@ -22,7 +22,11 @@
 ## Plan and current state
 
 1. Implement first test version from Vulkan tutorial
-    1. Here -> <https://vulkan-tutorial.com/en/Drawing_a_triangle/Graphics_pipeline_basics/Fixed_functions>
+    1. First triangle rendered
+    2. Here -> <https://vulkan-tutorial.com/Vertex_buffers/Vertex_input_description>
+1. Integrate imgui
+1. Add some tests GTest
+1. Add core as external library (thirdparty or out of tree add_subdirectory(path binpath))
 1. Integrate [libshaderc](https://github.com/google/shaderc/blob/main/libshaderc/README.md) in order to be able to compile the shaders from the application itself
 1. [Abstraction](#abstraction)
     1. GpuDevice
