@@ -88,6 +88,8 @@ SDLWindow::Run()
         return;
     }
 
+    const int kMinSizeToDraw = 1;
+
     SDL_Event e;
     bool      quit = false;
     while (!quit) {
@@ -121,18 +123,54 @@ SDLWindow::Run()
 
                 if (e.key.keysym.sym == SDLK_ESCAPE) {
                     quit = true;
+                } else if (e.key.keysym.sym == SDLK_a) {
+                    // SDL_MinimizeWindow(_window);
+                    SDL_SetWindowSize(_window, 0, 0);
                 }
-            } else if (e.type == SDL_WINDOWEVENT){
-                if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+            } else if (e.type == SDL_WINDOWEVENT) {
+                switch (e.window.event) {
+                case SDL_WINDOWEVENT_SIZE_CHANGED:
                     _OnResize(e.window.data1, e.window.data2);
-                } else if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
+                    _shouldRender = e.window.data1 > kMinSizeToDraw && e.window.data2 > kMinSizeToDraw ;
+                    break;
+                case SDL_WINDOWEVENT_RESIZED:
                     _OnResize(e.window.data1, e.window.data2);
+                    _shouldRender = e.window.data1 > kMinSizeToDraw && e.window.data2 > kMinSizeToDraw;
+                    break;
+                case SDL_WINDOWEVENT_MAXIMIZED:
+                    break;
+                case SDL_WINDOWEVENT_MINIMIZED:
+                    _shouldRender = false;
+                    break;
+                case SDL_WINDOWEVENT_SHOWN:
+                    _shouldRender = true;
+                    break;
+                case SDL_WINDOWEVENT_HIDDEN:
+                    _shouldRender = false;
+                    break;
+                case SDL_WINDOWEVENT_ENTER:
+                    break;
+                case SDL_WINDOWEVENT_LEAVE:
+                    break;
+                case SDL_WINDOWEVENT_FOCUS_GAINED:
+                    break;
+                case SDL_WINDOWEVENT_FOCUS_LOST:
+                    break;
+                case SDL_WINDOWEVENT_TAKE_FOCUS:
+                    break;
+                case SDL_WINDOWEVENT_CLOSE:
+                    break;
                 }
-                } else if (e.type == SDL_QUIT)
-                    quit = true;
+            } else if (e.type == SDL_QUIT) {
+                quit = true;
+            } else {
+                LOG_DEBUG("unhandled event: ", e.type);
+            }
         }
 
-        _DrawFrame();
+        if (_shouldRender) {
+            _DrawFrame();
+        }
     }
 
     _OnMainLoopExit();

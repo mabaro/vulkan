@@ -27,6 +27,8 @@ protected:
     SDL_Rect    _screenRect = {0, 0, 640, 480};
     const char* _name;
 
+    bool _shouldRender = true;
+
 public:
     SDLWindow(const char* name = "Undefined")
         : _name(name)
