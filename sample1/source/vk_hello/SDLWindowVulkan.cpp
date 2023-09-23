@@ -110,8 +110,16 @@ SDLWindowVulkan::_DrawFrame()
     vkResetFences(_device, 1, &_inFlightFences[currentFrame]);
 
     uint32_t swapchainIndex;
-    VK_CHECK(vkAcquireNextImageKHR(
-        _device, _swapChain, UINT64_MAX, _imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &swapchainIndex));
+    {
+        VkResult result = vkAcquireNextImageKHR(
+            _device, _swapChain, UINT64_MAX, _imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &swapchainIndex);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+            _RecreateSwapChain();
+            return;
+        } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+            LOG_ERROR("failed to acquire swap chain image!");
+        }
+    }
 
     VkCommandBuffer commandBuffer = _commandBuffers[currentFrame];
     // VkCommandBufferResetFlagBits::VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT
@@ -151,7 +159,15 @@ SDLWindowVulkan::_DrawFrame()
 
         presentInfo.pResults = nullptr;   // Optional
 
-        vkQueuePresentKHR(_presentQueue, &presentInfo);
+        {
+            VkResult result = vkQueuePresentKHR(_presentQueue, &presentInfo);
+            if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+                _RecreateSwapChain();
+                return;
+            } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+                LOG_ERROR("failed to acquire swap chain image!");
+            }
+        }
     }
 }
 
