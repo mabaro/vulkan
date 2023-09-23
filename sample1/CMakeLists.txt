@@ -62,6 +62,14 @@ message("Binary dir: ${CMAKE_BINARY_DIR}")
 
 add_subdirectory(lib/gfx)
 
+# ## shaderc libshaderc
+# # include out of tree library needs binary dir as second param
+# set(SHADERC_SKIP_EXAMPLES ON)
+# set(SHADERC_SKIP_TESTS ON)
+# set(SHADERC_SKIP_INSTALL ON)
+# set(SHADERC_SKIP_COPYRIGHT_CHECK ON)
+# add_subdirectory(../shaderc-main glslc)
+
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 
@@ -107,3 +115,5 @@ file(GLOB_RECURSE VK_HELLO_SOURCES RELATIVE ${CMAKE_SOURCE_DIR} "source/vk_hello
 add_executable(vk_hello ${VK_HELLO_SOURCES})
 add_dependencies(vk_hello shaders)
 target_link_libraries(vk_hello gfx ${SDL2_LIBRARIES} vulkan)
+# how to include libshaderc static from shaderc external 
+#target_link_libraries(vk_hello gfx ${SDL2_LIBRARIES} vulkan shaderc)
