@@ -43,7 +43,7 @@ SDLWindowVulkan::Init()
     ASSERT(result);
     result &= _CreateLogicalDevice();
     ASSERT(result);
-    result &= _CreateSwapchain();
+    result &= _CreateSwapChain();
     ASSERT(result);
     result &= _CreateImageViews();
     ASSERT(result);
@@ -71,55 +71,27 @@ SDLWindowVulkan::Init()
 void
 SDLWindowVulkan::Close()
 {
-    {// _DestroySyncObjects()
-        vkDestroySemaphore(_device, _imageAvailableSemaphore, nullptr);
-        vkDestroySemaphore(_device, _renderFinishedSemaphore, nullptr);
-        vkDestroyFence(_device, _inFlightFence, nullptr);
-        _imageAvailableSemaphore = VK_NULL_HANDLE;
-        _renderFinishedSemaphore = VK_NULL_HANDLE;
-        _inFlightFence           = VK_NULL_HANDLE;
+    _CleanupSwapChain();
+
+    VK_DESTROY_WITH_DEVICE(vkDestroyPipeline,_device, _graphicsPipeline, nullptr);
+    VK_DESTROY_WITH_DEVICE(vkDestroyPipelineLayout,_device, _pipelineLayout, nullptr);
+    VK_DESTROY_WITH_DEVICE(vkDestroyRenderPass,_device, _renderPass, nullptr);
+
+    {   // _DestroySyncObjects()
+        VK_DESTROY_LIST_WITH_DEVICE(vkDestroySemaphore, _device, _imageAvailableSemaphores, nullptr);
+        VK_DESTROY_LIST_WITH_DEVICE(vkDestroySemaphore, _device, _renderFinishedSemaphores, nullptr);
+        VK_DESTROY_LIST_WITH_DEVICE(vkDestroyFence, _device, _inFlightFences, nullptr);
     }
 
-    vkDestroyCommandPool(_device, _commandPool, nullptr);
-    _commandPool = VK_NULL_HANDLE;
-
-    vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
-    _graphicsPipeline = VK_NULL_HANDLE;
-
-    vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
-    _pipelineLayout = VK_NULL_HANDLE;
-
-    for (auto framebuffer : _swapChainFramebuffers) {
-        vkDestroyFramebuffer(_device, framebuffer, nullptr);
-    }
-    _swapChainFramebuffers.clear();
-
-    vkDestroyRenderPass(_device, _renderPass, nullptr);
-    _renderPass = VK_NULL_HANDLE;
-
-    for (auto imageView : _swapChainImageViews) {
-        vkDestroyImageView(_device, imageView, nullptr);
-    }
-    _swapChainImageViews.clear();
-
-    // no need to destroy
-    _swapChainImages.clear();
-
-    vkDestroySwapchainKHR(_device, _swapChain, nullptr);
-    _swapChain = VK_NULL_HANDLE;
-
-    vkDestroySurfaceKHR(_instance, _surface, nullptr);
-    _surface = VK_NULL_HANDLE;
-
-    vkDestroyDevice(_device, nullptr);
-    _device = VK_NULL_HANDLE;
+    VK_DESTROY_WITH_DEVICE(vkDestroyCommandPool,_device, _commandPool, nullptr);
+    VK_DESTROY(vkDestroyDevice, _device, nullptr);
 
 #if USING(VALIDATION_LAYERS)
     _DeinitDebugMessenger();
 #endif   // #if USING(VALIDATION_LAYERS)
 
-    vkDestroyInstance(_instance, nullptr);
-    _instance = nullptr;
+    VK_DESTROY(vkDestroySurfaceKHR, _instance, _surface, nullptr);
+    VK_DESTROY(vkDestroyInstance, _instance, nullptr);
 
     SDLWindow::Close();
 }
@@ -127,39 +99,43 @@ SDLWindowVulkan::Close()
 ////////////////////////////////////////////////////////////////////////////////
 
 void
-SDLWindowVulkan::DrawFrame()
+SDLWindowVulkan::_DrawFrame()
 {
-    SDLWindow::DrawFrame();
+    const uint32_t currentFrame = _currentFrameIndex++ % MAX_FRAMES_IN_FLIGHT;
+    
+    SDLWindow::_DrawFrame();
 
     const uint64_t fenceTimeout = UINT64_MAX;
-    vkWaitForFences(_device, 1, &_inFlightFence, VK_TRUE, fenceTimeout);
-    vkResetFences(_device, 1, &_inFlightFence);
+    vkWaitForFences(_device, 1, &_inFlightFences[currentFrame], VK_TRUE, fenceTimeout);
+    vkResetFences(_device, 1, &_inFlightFences[currentFrame]);
 
-    uint32_t imageIndex;
-    VK_CHECK( vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX, _imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex));
+    uint32_t swapchainIndex;
+    VK_CHECK(vkAcquireNextImageKHR(
+        _device, _swapChain, UINT64_MAX, _imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &swapchainIndex));
 
-    VkCommandBuffer commandBuffer = _commandBuffers.back();
+    VkCommandBuffer commandBuffer = _commandBuffers[currentFrame];
     // VkCommandBufferResetFlagBits::VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT
     VkCommandBufferResetFlags commandBufferFlags {};
     vkResetCommandBuffer(commandBuffer, commandBufferFlags);
-    _RecordCommandBuffer(commandBuffer, imageIndex);
+    _RecordCommandBuffer(commandBuffer, swapchainIndex);
 
     VkSubmitInfo submitInfo {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-    VkSemaphore          waitSemaphores[] = {_imageAvailableSemaphore};
+    VkSemaphore          waitSemaphores[] = {_imageAvailableSemaphores[currentFrame]};
     VkPipelineStageFlags waitStages[]     = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     submitInfo.waitSemaphoreCount         = 1;
     submitInfo.pWaitSemaphores            = waitSemaphores;
     submitInfo.pWaitDstStageMask          = waitStages;
-    submitInfo.commandBufferCount         = _commandBuffers.size();
-    submitInfo.pCommandBuffers            = _commandBuffers.data();
+    submitInfo.commandBufferCount         = 1;
+    submitInfo.pCommandBuffers            = &_commandBuffers[currentFrame];
 
-    VkSemaphore signalSemaphores[]  = {_renderFinishedSemaphore};
+    VkSemaphore signalSemaphores[]  = {_renderFinishedSemaphores[currentFrame]};
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores    = signalSemaphores;
 
-    VK_CHECK_MSG (vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _inFlightFence), "failed to submit draw command buffer!");
+    VK_CHECK_MSG(vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _inFlightFences[currentFrame]),
+        "failed to submit draw command buffer!");
 
     {
         VkPresentInfoKHR presentInfo {};
@@ -171,12 +147,21 @@ SDLWindowVulkan::DrawFrame()
         VkSwapchainKHR swapChains[] = {_swapChain};
         presentInfo.swapchainCount  = 1;
         presentInfo.pSwapchains     = swapChains;
-        presentInfo.pImageIndices   = &imageIndex;
+        presentInfo.pImageIndices   = &swapchainIndex;
 
         presentInfo.pResults = nullptr;   // Optional
 
         vkQueuePresentKHR(_presentQueue, &presentInfo);
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void
+SDLWindowVulkan::_OnMainLoopExit()
+{
+    // need to wait for any async processes
+    vkDeviceWaitIdle(_device);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -555,7 +540,7 @@ chooseSwapExtent(SDL_Window* window, const VkSurfaceCapabilitiesKHR& capabilitie
 }
 
 bool
-SDLWindowVulkan::_CreateSwapchain()
+SDLWindowVulkan::_CreateSwapChain()
 {
     const SwapChainSupportDetails swapChainSupport = querySwapChainSupport(_physicalDevice, _surface);
 
@@ -706,8 +691,8 @@ SDLWindowVulkan::_CreateRenderPass()
     renderPassInfo.pSubpasses      = &subpass;
     {
         VkSubpassDependency dependency {};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
+        dependency.srcSubpass    = VK_SUBPASS_EXTERNAL;
+        dependency.dstSubpass    = 0;
         dependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         dependency.srcAccessMask = 0;
         dependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -899,11 +884,7 @@ SDLWindowVulkan::_CreateGraphicsPipeline()
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    if (vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_graphicsPipeline)
-        != VK_SUCCESS) {
-        LOG_ERROR("failed to create graphics pipeline!");
-        return false;
-    }
+    VK_CHECK(vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_graphicsPipeline));
 
     return true;
 }
@@ -961,28 +942,26 @@ SDLWindowVulkan::_CreateCommandPool()
 bool
 SDLWindowVulkan::_CreateCommandBuffer()
 {
+    _commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+
     VkCommandBufferAllocateInfo allocInfo {};
     allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.commandPool        = _commandPool;
     allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandBufferCount = 1;
+    allocInfo.commandBufferCount = _commandBuffers.size();
 
-    _commandBuffers.resize(_commandBuffers.size() + 1);
-    if (vkAllocateCommandBuffers(_device, &allocInfo, &_commandBuffers.back()) != VK_SUCCESS) {
-        LOG_ERROR("failed to allocate command buffers!");
-        _commandBuffers.resize(_commandBuffers.size() - 1);
-        return false;
-    }
+    VK_CHECK(vkAllocateCommandBuffers(_device, &allocInfo, _commandBuffers.data()));
+
     return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 
 bool
-SDLWindowVulkan::_RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+SDLWindowVulkan::_RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t swapchainIndex)
 {
     VkCommandBufferBeginInfo beginInfo {};
-    beginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
     // flags:
     // VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT:
@@ -991,7 +970,7 @@ SDLWindowVulkan::_RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
     //   This is a secondary command buffer that will be entirely within a single render pass.
     // VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT:
     //   The command buffer can be resubmitted while it is also already pending execution.
-    beginInfo.flags            = 0;         // Optional
+    beginInfo.flags = 0;   // Optional
 
     beginInfo.pInheritanceInfo = nullptr;   // Optional
 
@@ -1000,11 +979,11 @@ SDLWindowVulkan::_RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
         return false;
     }
 
-    {// renderpass
+    {   // renderpass
         VkRenderPassBeginInfo renderPassInfo {};
         renderPassInfo.sType       = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderPass  = _renderPass;
-        renderPassInfo.framebuffer = _swapChainFramebuffers[imageIndex];
+        renderPassInfo.framebuffer = _swapChainFramebuffers[swapchainIndex];
 
         renderPassInfo.renderArea.offset = {0, 0};
         renderPassInfo.renderArea.extent = _swapChainExtent;
@@ -1040,7 +1019,7 @@ SDLWindowVulkan::_RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
 
             vkCmdEndRenderPass(commandBuffer);
         }
-    } // renderPass
+    }   // renderPass
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
         LOG_ERROR("failed to record command buffer!");
@@ -1060,16 +1039,44 @@ SDLWindowVulkan::_CreateSyncObjects()
 
     VkFenceCreateInfo fenceInfo {};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; // first shot already signaled
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;   // first shot already signaled
 
-    if (vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_imageAvailableSemaphore) != VK_SUCCESS
-        || vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_renderFinishedSemaphore) != VK_SUCCESS
-        || vkCreateFence(_device, &fenceInfo, nullptr, &_inFlightFence) != VK_SUCCESS) {
-        LOG_ERROR("failed to create semaphores!");
-        return false;
+    _imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    _renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    _inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VK_CHECK(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_imageAvailableSemaphores[i]));
+        VK_CHECK(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_renderFinishedSemaphores[i]));
+        VK_CHECK(vkCreateFence(_device, &fenceInfo, nullptr, &_inFlightFences[i]));
     }
 
     return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+void
+SDLWindowVulkan::_CleanupSwapChain()
+{
+    VK_DESTROY_LIST_WITH_DEVICE(vkDestroyFramebuffer, _device, _swapChainFramebuffers, nullptr);
+    VK_DESTROY_LIST_WITH_DEVICE(vkDestroyImageView, _device, _swapChainImageViews, nullptr);
+    VK_DESTROY_WITH_DEVICE(vkDestroySwapchainKHR, _device, _swapChain, nullptr);
+
+    // no need to destroy
+    _swapChainImages.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void
+SDLWindowVulkan::_RecreateSwapChain()
+{
+    vkDeviceWaitIdle(_device);
+
+    _CreateSwapChain();
+    _CreateImageViews();
+    _CreateFramebuffers();
 }
 
 /////////////////////////////////////////////////////////////////////////////////

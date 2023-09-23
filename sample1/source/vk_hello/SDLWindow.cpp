@@ -55,7 +55,15 @@ SDLWindow::Close()
 ////////////////////////////////////////////////////////////////////////////////
 
 void
-SDLWindow::DrawFrame()
+SDLWindow::_DrawFrame()
+{
+    // nothing
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void
+SDLWindow::_OnMainLoopExit()
 {
     // nothing
 }
@@ -111,6 +119,8 @@ SDLWindow::Run()
                 quit = true;
         }
 
-        DrawFrame();
+        _DrawFrame();
     }
+
+    _OnMainLoopExit();
 }

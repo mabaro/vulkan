@@ -12,6 +12,8 @@ namespace gfx {
 ////////////////////////////////////////////////////////////////////////////////
 
 class SDLWindowVulkan : public SDLWindow {
+    static constexpr int MAX_FRAMES_IN_FLIGHT = 5;
+
     VkInstance       _instance       = VK_NULL_HANDLE;
     VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
     VkDevice         _device         = VK_NULL_HANDLE;
@@ -41,12 +43,13 @@ class SDLWindowVulkan : public SDLWindow {
     VkPipelineLayout _pipelineLayout;
     VkPipeline       _graphicsPipeline;
 
-    VkCommandPool _commandPool;
-    std::vector<VkCommandBuffer> _commandBuffers;
+    VkCommandPool                _commandPool;
 
-    VkSemaphore _imageAvailableSemaphore;
-    VkSemaphore _renderFinishedSemaphore;
-    VkFence     _inFlightFence;
+    std::vector<VkCommandBuffer> _commandBuffers;
+    std::vector<VkSemaphore>  _imageAvailableSemaphores;
+    std::vector<VkSemaphore>  _renderFinishedSemaphores;
+    std::vector<VkFence>      _inFlightFences;
+    uint8_t                   _currentFrameIndex = 0;
 
 public:
     SDLWindowVulkan();
@@ -54,14 +57,16 @@ public:
     bool Init() override;
     void Close() override;
 
-    void DrawFrame() override;
+protected:
+    void _DrawFrame() override;
+    void _OnMainLoopExit() override;
 
 protected:
     bool _CreateInstance();
     bool _SelectAdapter();
     bool _CreateLogicalDevice();
     bool _CreateSurface();
-    bool _CreateSwapchain();
+    bool _CreateSwapChain();
     bool _CreateImageViews();
     bool _CreateRenderPass();
     bool _CreateGraphicsPipeline();
@@ -70,6 +75,9 @@ protected:
     bool _CreateCommandBuffer();
     bool _RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     bool _CreateSyncObjects();
+
+    void _CleanupSwapChain();
+    void _RecreateSwapChain();
 
     bool _IsPhysicalDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) const;
 
@@ -80,7 +88,7 @@ protected:
     bool        _InitDebugMessenger();
     bool        _DeinitDebugMessenger();
 #endif   // #if USING(VALIDATION_LAYERS)
-    };
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 }   // namespace gfx {

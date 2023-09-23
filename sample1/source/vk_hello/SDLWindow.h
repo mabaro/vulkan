@@ -7,19 +7,23 @@ class Window {
 public:
     virtual const char* GetName() const = 0;
 
-    virtual bool Init() = 0;
+    virtual bool Init()  = 0;
     virtual void Close() = 0;
 
-    virtual void DrawFrame() = 0;
-    virtual void Run() = 0;
+    virtual void Run()       = 0;
 
 protected:
+    virtual void _DrawFrame() = 0;
+
+    //! Will be called when the main loop is finished
+    //! in order to wait for any ongoing async processes
+    virtual void _OnMainLoopExit() = 0;
 };
 
 class SDLWindow : public Window {
 protected:
-    SDL_Window* _window = nullptr;
-    SDL_Rect _screenRect = { 0, 0, 640, 480 };
+    SDL_Window* _window     = nullptr;
+    SDL_Rect    _screenRect = {0, 0, 640, 480};
     const char* _name;
 
 public:
@@ -33,6 +37,9 @@ public:
     bool Init() override;
     void Close() override;
 
-    void DrawFrame() override;
     void Run() override;
+
+protected:
+    void _DrawFrame() override;
+    void _OnMainLoopExit() override;
 };
