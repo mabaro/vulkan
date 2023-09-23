@@ -30,21 +30,31 @@ class SDLWindowVulkan : public SDLWindow {
 #endif   // #if USING(VALIDATION_LAYERS)
 
     // swapchain
-    VkSwapchainKHR           _swapChain = VK_NULL_HANDLE;
-    VkFormat                 _swapChainImageFormat;
-    VkExtent2D               _swapChainExtent;
-    std::vector<VkImage>     _swapChainImages;
-    std::vector<VkImageView> _swapChainImageViews;
+    VkSwapchainKHR             _swapChain = VK_NULL_HANDLE;
+    VkFormat                   _swapChainImageFormat;
+    VkExtent2D                 _swapChainExtent;
+    std::vector<VkImage>       _swapChainImages;
+    std::vector<VkImageView>   _swapChainImageViews;
+    std::vector<VkFramebuffer> _swapChainFramebuffers;
 
     VkRenderPass     _renderPass;
     VkPipelineLayout _pipelineLayout;
     VkPipeline       _graphicsPipeline;
+
+    VkCommandPool _commandPool;
+    std::vector<VkCommandBuffer> _commandBuffers;
+
+    VkSemaphore _imageAvailableSemaphore;
+    VkSemaphore _renderFinishedSemaphore;
+    VkFence     _inFlightFence;
 
 public:
     SDLWindowVulkan();
 
     bool Init() override;
     void Close() override;
+
+    void DrawFrame() override;
 
 protected:
     bool _CreateInstance();
@@ -55,6 +65,11 @@ protected:
     bool _CreateImageViews();
     bool _CreateRenderPass();
     bool _CreateGraphicsPipeline();
+    bool _CreateFramebuffers();
+    bool _CreateCommandPool();
+    bool _CreateCommandBuffer();
+    bool _RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+    bool _CreateSyncObjects();
 
     bool _IsPhysicalDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) const;
 
@@ -65,7 +80,7 @@ protected:
     bool        _InitDebugMessenger();
     bool        _DeinitDebugMessenger();
 #endif   // #if USING(VALIDATION_LAYERS)
-};
+    };
 
 ////////////////////////////////////////////////////////////////////////////////
 }   // namespace gfx {

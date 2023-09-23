@@ -49,7 +49,15 @@ SDLWindowVulkan::Init()
     ASSERT(result);
     result &= _CreateRenderPass();
     ASSERT(result);
+    result &= _CreateFramebuffers();
+    ASSERT(result);
     result &= _CreateGraphicsPipeline();
+    ASSERT(result);
+    result &= _CreateCommandPool();
+    ASSERT(result);
+    result &= _CreateCommandBuffer();
+    ASSERT(result);
+    result &= _CreateSyncObjects();
     ASSERT(result);
 
 #if USING(VALIDATION_LAYERS)
@@ -63,11 +71,28 @@ SDLWindowVulkan::Init()
 void
 SDLWindowVulkan::Close()
 {
+    {// _DestroySyncObjects()
+        vkDestroySemaphore(_device, _imageAvailableSemaphore, nullptr);
+        vkDestroySemaphore(_device, _renderFinishedSemaphore, nullptr);
+        vkDestroyFence(_device, _inFlightFence, nullptr);
+        _imageAvailableSemaphore = VK_NULL_HANDLE;
+        _renderFinishedSemaphore = VK_NULL_HANDLE;
+        _inFlightFence           = VK_NULL_HANDLE;
+    }
+
+    vkDestroyCommandPool(_device, _commandPool, nullptr);
+    _commandPool = VK_NULL_HANDLE;
+
     vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
     _graphicsPipeline = VK_NULL_HANDLE;
-    
+
     vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
     _pipelineLayout = VK_NULL_HANDLE;
+
+    for (auto framebuffer : _swapChainFramebuffers) {
+        vkDestroyFramebuffer(_device, framebuffer, nullptr);
+    }
+    _swapChainFramebuffers.clear();
 
     vkDestroyRenderPass(_device, _renderPass, nullptr);
     _renderPass = VK_NULL_HANDLE;
@@ -98,6 +123,63 @@ SDLWindowVulkan::Close()
 
     SDLWindow::Close();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+void
+SDLWindowVulkan::DrawFrame()
+{
+    SDLWindow::DrawFrame();
+
+    const uint64_t fenceTimeout = UINT64_MAX;
+    vkWaitForFences(_device, 1, &_inFlightFence, VK_TRUE, fenceTimeout);
+    vkResetFences(_device, 1, &_inFlightFence);
+
+    uint32_t imageIndex;
+    VK_CHECK( vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX, _imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex));
+
+    VkCommandBuffer commandBuffer = _commandBuffers.back();
+    // VkCommandBufferResetFlagBits::VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT
+    VkCommandBufferResetFlags commandBufferFlags {};
+    vkResetCommandBuffer(commandBuffer, commandBufferFlags);
+    _RecordCommandBuffer(commandBuffer, imageIndex);
+
+    VkSubmitInfo submitInfo {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    VkSemaphore          waitSemaphores[] = {_imageAvailableSemaphore};
+    VkPipelineStageFlags waitStages[]     = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submitInfo.waitSemaphoreCount         = 1;
+    submitInfo.pWaitSemaphores            = waitSemaphores;
+    submitInfo.pWaitDstStageMask          = waitStages;
+    submitInfo.commandBufferCount         = _commandBuffers.size();
+    submitInfo.pCommandBuffers            = _commandBuffers.data();
+
+    VkSemaphore signalSemaphores[]  = {_renderFinishedSemaphore};
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores    = signalSemaphores;
+
+    VK_CHECK_MSG (vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _inFlightFence), "failed to submit draw command buffer!");
+
+    {
+        VkPresentInfoKHR presentInfo {};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores    = signalSemaphores;
+
+        VkSwapchainKHR swapChains[] = {_swapChain};
+        presentInfo.swapchainCount  = 1;
+        presentInfo.pSwapchains     = swapChains;
+        presentInfo.pImageIndices   = &imageIndex;
+
+        presentInfo.pResults = nullptr;   // Optional
+
+        vkQueuePresentKHR(_presentQueue, &presentInfo);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 bool
 SDLWindowVulkan::_CreateInstance()
@@ -585,11 +667,11 @@ SDLWindowVulkan::_CreateRenderPass()
     VkAttachmentDescription colorAttachment {};
     colorAttachment.format  = _swapChainImageFormat;
     colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    
+
     // color and depth
     colorAttachment.loadOp  = VK_ATTACHMENT_LOAD_OP_CLEAR;
     colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    
+
     colorAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
@@ -607,7 +689,7 @@ SDLWindowVulkan::_CreateRenderPass()
         }
         // shader will write into this attachment with the following reference
         // layout(location = 0) out vec4 outColor
-        subpass.colorAttachmentCount = 1;
+        subpass.colorAttachmentCount    = 1;
         subpass.pColorAttachments       = &colorAttachmentRef;
         subpass.pInputAttachments       = nullptr;   //  Attachments that are read from a shader
         subpass.pResolveAttachments     = nullptr;   //  Attachments used for multisampling color attachments
@@ -622,6 +704,18 @@ SDLWindowVulkan::_CreateRenderPass()
     renderPassInfo.pAttachments    = &colorAttachment;
     renderPassInfo.subpassCount    = 1;
     renderPassInfo.pSubpasses      = &subpass;
+    {
+        VkSubpassDependency dependency {};
+        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependency.dstSubpass = 0;
+        dependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.srcAccessMask = 0;
+        dependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+        renderPassInfo.dependencyCount = 1;
+        renderPassInfo.pDependencies   = &dependency;
+    }
 
     if (vkCreateRenderPass(_device, &renderPassInfo, nullptr, &_renderPass) != VK_SUCCESS) {
         LOG_ERROR("failed to create render pass!");
@@ -640,7 +734,8 @@ SDLWindowVulkan::_CreateGraphicsPipeline()
     auto fragShaderCode = utils::readFile("shaders/shader.frag.spv");
 
     VkShaderModule fragmentShaderModule;
-    core::Scoped   scopedFragmentShader([&]() { fragmentShaderModule = gfx::createShaderModule(_device, fragShaderCode); },
+    core::Scoped   scopedFragmentShader(
+        [&]() { fragmentShaderModule = gfx::createShaderModule(_device, fragShaderCode); },
         [&]() {
             vkDestroyShaderModule(_device, fragmentShaderModule, nullptr);
             fragmentShaderModule = VK_NULL_HANDLE;
@@ -654,17 +749,17 @@ SDLWindowVulkan::_CreateGraphicsPipeline()
         });
 
     VkPipelineShaderStageCreateInfo vertShaderStageInfo {};
-    vertShaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vertShaderStageInfo.stage  = VK_SHADER_STAGE_VERTEX_BIT;
+    vertShaderStageInfo.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertShaderStageInfo.stage               = VK_SHADER_STAGE_VERTEX_BIT;
     vertShaderStageInfo.module              = vertexShaderModule;
-    vertShaderStageInfo.pName  = "vs_main";
-    vertShaderStageInfo.pSpecializationInfo = nullptr; // specify shader constants
+    vertShaderStageInfo.pName               = "main";
+    vertShaderStageInfo.pSpecializationInfo = nullptr;   // specify shader constants
 
     VkPipelineShaderStageCreateInfo fragShaderStageInfo {};
-    fragShaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fragShaderStageInfo.stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragShaderStageInfo.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragShaderStageInfo.stage               = VK_SHADER_STAGE_FRAGMENT_BIT;
     fragShaderStageInfo.module              = fragmentShaderModule;
-    fragShaderStageInfo.pName  = "ps_main";
+    fragShaderStageInfo.pName               = "main";
     vertShaderStageInfo.pSpecializationInfo = nullptr;   // specify shader constants
 
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
@@ -698,7 +793,7 @@ SDLWindowVulkan::_CreateGraphicsPipeline()
     viewportState.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     viewportState.viewportCount = 1;
     viewportState.scissorCount  = 1;
-#else // specify viewport/scissor statically
+#else   // specify viewport/scissor statically
     VkViewport viewport {};
     viewport.x        = 0.0f;
     viewport.y        = 0.0f;
@@ -720,8 +815,8 @@ SDLWindowVulkan::_CreateGraphicsPipeline()
 #endif
 
     VkPipelineRasterizationStateCreateInfo rasterizer {};
-    rasterizer.sType            = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterizer.depthClampEnable = VK_FALSE;
+    rasterizer.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.depthClampEnable        = VK_FALSE;
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode             = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth               = 1.0f;
@@ -781,9 +876,9 @@ SDLWindowVulkan::_CreateGraphicsPipeline()
     ////////////////////////////////////////////////////////////////////////////////
 
     VkGraphicsPipelineCreateInfo pipelineInfo {};
-    pipelineInfo.sType      = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineInfo.stageCount = 2;
-    pipelineInfo.pStages    = shaderStages;
+    pipelineInfo.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.stageCount          = 2;
+    pipelineInfo.pStages             = shaderStages;
     pipelineInfo.pVertexInputState   = &vertexInputInfo;
     pipelineInfo.pInputAssemblyState = &inputAssembly;
     pipelineInfo.pViewportState      = &viewportState;
@@ -804,8 +899,173 @@ SDLWindowVulkan::_CreateGraphicsPipeline()
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    if (vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_graphicsPipeline) != VK_SUCCESS) {
+    if (vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_graphicsPipeline)
+        != VK_SUCCESS) {
         LOG_ERROR("failed to create graphics pipeline!");
+        return false;
+    }
+
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+bool
+SDLWindowVulkan::_CreateFramebuffers()
+{
+    _swapChainFramebuffers.resize(_swapChainImageViews.size());
+
+    for (size_t i = 0; i < _swapChainImageViews.size(); i++) {
+        VkImageView attachments[] = {_swapChainImageViews[i]};
+
+        VkFramebufferCreateInfo framebufferInfo {};
+        framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferInfo.renderPass      = _renderPass;
+        framebufferInfo.attachmentCount = 1;
+        framebufferInfo.pAttachments    = attachments;
+        framebufferInfo.width           = _swapChainExtent.width;
+        framebufferInfo.height          = _swapChainExtent.height;
+        framebufferInfo.layers          = 1;
+
+        if (vkCreateFramebuffer(_device, &framebufferInfo, nullptr, &_swapChainFramebuffers[i]) != VK_SUCCESS) {
+            LOG_ERROR("failed to create framebuffer!");
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+bool
+SDLWindowVulkan::_CreateCommandPool()
+{
+    QueueFamilyIndices queueFamilyIndices = findQueueFamilies(_physicalDevice, _surface);
+
+    VkCommandPoolCreateInfo poolInfo {};
+    poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    poolInfo.queueFamilyIndex = queueFamilyIndices.optGraphicsFamily.value();
+
+    if (vkCreateCommandPool(_device, &poolInfo, nullptr, &_commandPool) != VK_SUCCESS) {
+        LOG_ERROR("failed to create command pool!");
+        return false;
+    }
+
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+bool
+SDLWindowVulkan::_CreateCommandBuffer()
+{
+    VkCommandBufferAllocateInfo allocInfo {};
+    allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool        = _commandPool;
+    allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = 1;
+
+    _commandBuffers.resize(_commandBuffers.size() + 1);
+    if (vkAllocateCommandBuffers(_device, &allocInfo, &_commandBuffers.back()) != VK_SUCCESS) {
+        LOG_ERROR("failed to allocate command buffers!");
+        _commandBuffers.resize(_commandBuffers.size() - 1);
+        return false;
+    }
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+bool
+SDLWindowVulkan::_RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+{
+    VkCommandBufferBeginInfo beginInfo {};
+    beginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+    // flags:
+    // VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT:
+    //   The command buffer will be rerecorded right after executing it once.
+    // VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT:
+    //   This is a secondary command buffer that will be entirely within a single render pass.
+    // VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT:
+    //   The command buffer can be resubmitted while it is also already pending execution.
+    beginInfo.flags            = 0;         // Optional
+
+    beginInfo.pInheritanceInfo = nullptr;   // Optional
+
+    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+        LOG_ERROR("failed to begin recording command buffer!");
+        return false;
+    }
+
+    {// renderpass
+        VkRenderPassBeginInfo renderPassInfo {};
+        renderPassInfo.sType       = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass  = _renderPass;
+        renderPassInfo.framebuffer = _swapChainFramebuffers[imageIndex];
+
+        renderPassInfo.renderArea.offset = {0, 0};
+        renderPassInfo.renderArea.extent = _swapChainExtent;
+
+        VkClearValue clearColor        = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues    = &clearColor;
+
+        VkViewport viewport {};
+        viewport.x        = 0.0f;
+        viewport.y        = 0.0f;
+        viewport.width    = static_cast<float>(_swapChainExtent.width);
+        viewport.height   = static_cast<float>(_swapChainExtent.height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor {};
+        scissor.offset = {0, 0};
+        scissor.extent = _swapChainExtent;
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+        {
+            vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
+
+            uint32_t vertexCount   = 3;
+            uint32_t instanceCount = 1;
+            uint32_t firstVertex   = 0;
+            uint32_t firstInstance = 0;
+            vkCmdDraw(commandBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
+
+            vkCmdEndRenderPass(commandBuffer);
+        }
+    } // renderPass
+
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+        LOG_ERROR("failed to record command buffer!");
+        return false;
+    }
+
+    return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+bool
+SDLWindowVulkan::_CreateSyncObjects()
+{
+    VkSemaphoreCreateInfo semaphoreInfo {};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    VkFenceCreateInfo fenceInfo {};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; // first shot already signaled
+
+    if (vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_imageAvailableSemaphore) != VK_SUCCESS
+        || vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_renderFinishedSemaphore) != VK_SUCCESS
+        || vkCreateFence(_device, &fenceInfo, nullptr, &_inFlightFence) != VK_SUCCESS) {
+        LOG_ERROR("failed to create semaphores!");
         return false;
     }
 

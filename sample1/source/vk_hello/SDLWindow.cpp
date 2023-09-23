@@ -55,7 +55,7 @@ SDLWindow::Close()
 ////////////////////////////////////////////////////////////////////////////////
 
 void
-SDLWindow::Draw()
+SDLWindow::DrawFrame()
 {
     // nothing
 }
@@ -111,6 +111,6 @@ SDLWindow::Run()
                 quit = true;
         }
 
-        Draw();
+        DrawFrame();
     }
 }

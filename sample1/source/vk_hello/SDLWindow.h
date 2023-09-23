@@ -10,7 +10,7 @@ public:
     virtual bool Init() = 0;
     virtual void Close() = 0;
 
-    virtual void Draw() = 0;
+    virtual void DrawFrame() = 0;
     virtual void Run() = 0;
 
 protected:
@@ -33,6 +33,6 @@ public:
     bool Init() override;
     void Close() override;
 
-    void Draw() override;
+    void DrawFrame() override;
     void Run() override;
 };
