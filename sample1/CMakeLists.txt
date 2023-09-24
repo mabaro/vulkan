@@ -48,11 +48,6 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES Windows)
     message("This is a Windows System")
 endif()
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
-set(LIBRARY_OUTPUT_PATH  ${CMAKE_BINARY_DIR}/lib)
-message("Binary dir: ${CMAKE_BINARY_DIR}")
-
 ## shared libraries
 # LIBRARY_OUTPUT_PATH
 # CMAKE_LIBRARY_OUTPUT_DIRECTORY
@@ -74,46 +69,21 @@ find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 
 ##########
-add_custom_target(hello_images)
-add_custom_command(TARGET hello_images PRE_BUILD
-    COMMAND ${CMAKE_COMMAND} -E
-        copy ${CMAKE_SOURCE_DIR}/res/hello.bmp ${CMAKE_BINARY_DIR}/bin/)
-
-set(HELLO_SOURCES
-    source/sdl_hello/TextureWrapper.h
-    source/sdl_hello/main.cpp 
+## IMGUI
+SET(THIRDPARTY ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty)
+add_library(imgui
+    "${THIRDPARTY}/imgui/imgui.h"
+    "${THIRDPARTY}/imgui/imgui.cpp"
+    "${THIRDPARTY}/imgui/imgui_demo.cpp"
+    "${THIRDPARTY}/imgui/imgui_draw.cpp"
+    "${THIRDPARTY}/imgui/imgui_widgets.cpp"
+    "${THIRDPARTY}/imgui/backends/imgui_impl_vulkan.cpp"
+    "${THIRDPARTY}/imgui/backends/imgui_impl_sdl2.cpp"
 )
-add_executable(sdl_hello ${HELLO_SOURCES})
-add_dependencies(sdl_hello hello_images)
-target_link_libraries(sdl_hello gfx ${SDL2_LIBRARIES})
+target_include_directories(imgui PUBLIC "${THIRDPARTY}/imgui/")
 
-##########
+############################################################
 
-set(SPIRVTOOLS ${CMAKE_CURRENT_SOURCE_DIR}/tools/linux/bin)
-set(GLSLCOMPILER ${SPIRVTOOLS}/glslc)
+add_subdirectory(sdl_hello)
 
-add_custom_target(shaders)
-file(GLOB ShaderFiles 
-    ${CMAKE_SOURCE_DIR}/res/shaders/*.frag
-    ${CMAKE_SOURCE_DIR}/res/shaders/*.vert)
-
-# add_custom_command(TARGET shaders PRE_BUILD
-#                  COMMAND ${CMAKE_COMMAND} -E copy ${shaderFile} ${CMAKE_BINARY_DIR}/bin/shaders/)
-add_custom_command(TARGET shaders PRE_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/shaders)
-foreach(shaderFile ${ShaderFiles})
-    get_filename_component(FILENAME ${shaderFile} NAME)
-    message("Adding shader: ${CMAKE_BINARY_DIR}/bin/shaders/${FILENAME}.spv")
-    add_custom_command(TARGET shaders PRE_BUILD
-        # OUTPUT  ${FILENAME}.spv          # Treated as relative to CMAKE_CURRENT_BINARY_DIR
-        COMMAND ${GLSLCOMPILER} ${shaderFile} -o ${CMAKE_BINARY_DIR}/bin/shaders/${FILENAME}.spv
-        DEPENDS ${shaderFile} # Treated as relative to CMAKE_CURRENT_SOURCE_DIR
-    )
-endforeach()
-
-file(GLOB_RECURSE VK_HELLO_SOURCES RELATIVE ${CMAKE_SOURCE_DIR} "source/vk_hello/*.c*")
-add_executable(vk_hello ${VK_HELLO_SOURCES})
-add_dependencies(vk_hello shaders)
-target_link_libraries(vk_hello gfx ${SDL2_LIBRARIES} vulkan)
-# how to include libshaderc static from shaderc external 
-#target_link_libraries(vk_hello gfx ${SDL2_LIBRARIES} vulkan shaderc)
+add_subdirectory(vk_hello)
