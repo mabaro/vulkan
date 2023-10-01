@@ -77,6 +77,7 @@ add_library(imgui
     "${THIRDPARTY}/imgui/imgui_demo.cpp"
     "${THIRDPARTY}/imgui/imgui_draw.cpp"
     "${THIRDPARTY}/imgui/imgui_widgets.cpp"
+    "${THIRDPARTY}/imgui/imgui_tables.cpp"
     "${THIRDPARTY}/imgui/backends/imgui_impl_vulkan.cpp"
     "${THIRDPARTY}/imgui/backends/imgui_impl_sdl2.cpp"
 )

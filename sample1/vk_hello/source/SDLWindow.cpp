@@ -2,6 +2,8 @@
 
 #include "core/core.h"
 
+#include <backends/imgui_impl_sdl2.h>
+
 ////////////////////////////////////////////////////////////////////////////////
 
 bool
@@ -94,6 +96,7 @@ SDLWindow::Run()
     bool      quit = false;
     while (!quit) {
         while (SDL_PollEvent(&e)) {
+            ImGui_ImplSDL2_ProcessEvent(&e);
             // printf("Event: %d\n", e.type);
             if (e.type == SDL_JOYBUTTONDOWN) {
                 // SDL_JOYAXISMOTION = 0x600, /**< Joystick axis motion */
@@ -131,7 +134,7 @@ SDLWindow::Run()
                 switch (e.window.event) {
                 case SDL_WINDOWEVENT_SIZE_CHANGED:
                     _OnResize(e.window.data1, e.window.data2);
-                    _shouldRender = e.window.data1 > kMinSizeToDraw && e.window.data2 > kMinSizeToDraw ;
+                    _shouldRender = e.window.data1 > kMinSizeToDraw && e.window.data2 > kMinSizeToDraw;
                     break;
                 case SDL_WINDOWEVENT_RESIZED:
                     _OnResize(e.window.data1, e.window.data2);

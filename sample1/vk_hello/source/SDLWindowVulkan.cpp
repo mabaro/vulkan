@@ -1,7 +1,12 @@
 #include "SDLWindowVulkan.h"
 
 #include "Shader.h"
+#include "gfx/vk_init.h"
 #include "gfx/vk_types.h"
+
+#include <backends/imgui_impl_sdl2.h>
+#include <backends/imgui_impl_vulkan.h>
+#include <imgui.h>
 
 #include <SDL2/SDL_vulkan.h>
 
@@ -11,7 +16,6 @@
 #include <limits>      // Necessary for std::numeric_limits
 #include <optional>
 #include <set>
-
 
 #define LIST_AVAILABLE_EXTENSIONS NOT_IN_USE
 
@@ -66,17 +70,27 @@ SDLWindowVulkan::Init()
     ASSERT(result);
 #endif   // #if USING(VALIDATION_LAYERS)
 
+    _InitImgui();
+
     return result;
 }
 
 void
 SDLWindowVulkan::Close()
 {
+    {   // cleaning
+        for (auto rit = _mainDeletionQueue.rbegin(); rit != _mainDeletionQueue.rend(); ++rit) {
+            auto& func = *rit;
+            func();
+        }
+        _mainDeletionQueue.clear();
+    }
+
     _CleanupSwapChain();
 
-    VK_DESTROY_WITH_DEVICE(vkDestroyPipeline,_device, _graphicsPipeline, nullptr);
-    VK_DESTROY_WITH_DEVICE(vkDestroyPipelineLayout,_device, _pipelineLayout, nullptr);
-    VK_DESTROY_WITH_DEVICE(vkDestroyRenderPass,_device, _renderPass, nullptr);
+    VK_DESTROY_WITH_DEVICE(vkDestroyPipeline, _device, _graphicsPipeline, nullptr);
+    VK_DESTROY_WITH_DEVICE(vkDestroyPipelineLayout, _device, _pipelineLayout, nullptr);
+    VK_DESTROY_WITH_DEVICE(vkDestroyRenderPass, _device, _renderPass, nullptr);
 
     {   // _DestroySyncObjects()
         VK_DESTROY_LIST_WITH_DEVICE(vkDestroySemaphore, _device, _imageAvailableSemaphores, nullptr);
@@ -84,7 +98,7 @@ SDLWindowVulkan::Close()
         VK_DESTROY_LIST_WITH_DEVICE(vkDestroyFence, _device, _inFlightFences, nullptr);
     }
 
-    VK_DESTROY_WITH_DEVICE(vkDestroyCommandPool,_device, _commandPool, nullptr);
+    VK_DESTROY_WITH_DEVICE(vkDestroyCommandPool, _device, _commandPool, nullptr);
     VK_DESTROY(vkDestroyDevice, _device, nullptr);
 
 #if USING(VALIDATION_LAYERS)
@@ -104,8 +118,20 @@ SDLWindowVulkan::_DrawFrame()
 {
     SDLWindow::_DrawFrame();
 
+    {   // imgui
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplSDL2_NewFrame(_window);
+
+        // begin imgui commands
+        ImGui::NewFrame();
+        {
+            ImGui::ShowDemoWindow();
+        }
+        // finish imgui commands
+        ImGui::Render();
+    }
+
     const uint32_t currentFrame = _currentFrameIndex++ % MAX_FRAMES_IN_FLIGHT;
-    LOG_DEBUG("Draw: %d", _currentFrameIndex);
 
     const uint64_t fenceTimeout = UINT64_MAX;
     vkWaitForFences(_device, 1, &_inFlightFences[currentFrame], VK_TRUE, fenceTimeout);
@@ -182,21 +208,132 @@ SDLWindowVulkan::_OnMainLoopExit()
 {
     // need to wait for any async processes
     vkDeviceWaitIdle(_device);
-    }
+}
 
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-    void SDLWindowVulkan::_OnResize(uint32_t width, uint32_t height)
-    {
-        SDLWindow::_OnResize(width, height);
+void
+SDLWindowVulkan::_OnResize(uint32_t width, uint32_t height)
+{
+    SDLWindow::_OnResize(width, height);
 
-        _RecreateSwapChain();
-    }
+    _RecreateSwapChain();
+}
 
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-    bool SDLWindowVulkan::_CreateInstance()
-    {
+void
+SDLWindowVulkan::_InitImgui()
+{
+    const uint32_t       defaultSize  = 1000;   // oversized!
+    VkDescriptorPoolSize pool_sizes[] = {
+        {VK_DESCRIPTOR_TYPE_SAMPLER, defaultSize},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, defaultSize},
+        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, defaultSize},
+        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, defaultSize},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, defaultSize},
+        {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, defaultSize},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, defaultSize},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, defaultSize},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, defaultSize},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, defaultSize},
+        {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, defaultSize},
+    };
+
+    VkDescriptorPoolCreateInfo pool_info = {};
+    pool_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pool_info.flags                      = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    pool_info.maxSets                    = defaultSize;
+    pool_info.poolSizeCount              = std::size(pool_sizes);
+    pool_info.pPoolSizes                 = pool_sizes;
+
+    VkDescriptorPool imguiPool;
+    VK_CHECK(vkCreateDescriptorPool(_device, &pool_info, nullptr, &imguiPool));
+
+    // 2: initialize imgui library
+
+    // this initializes the core structures of imgui
+    ImGui::CreateContext();
+
+    // this initializes imgui for SDL
+    ImGui_ImplSDL2_InitForVulkan(_window);
+
+    // this initializes imgui for Vulkan
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance                  = _instance;
+    init_info.PhysicalDevice            = _physicalDevice;
+    init_info.Device                    = _device;
+    init_info.Queue                     = _graphicsQueue;
+    init_info.DescriptorPool            = imguiPool;
+    init_info.MinImageCount             = 3;
+    init_info.ImageCount                = 3;
+    init_info.MSAASamples               = VK_SAMPLE_COUNT_1_BIT;
+
+    ImGui_ImplVulkan_Init(&init_info, _renderPass);
+
+    // execute a gpu command to upload imgui font textures
+    _ImmediateSubmit([&](VkCommandBuffer cmd) { ImGui_ImplVulkan_CreateFontsTexture(cmd); });
+
+    // clear font textures from cpu data
+    ImGui_ImplVulkan_DestroyFontUploadObjects();
+
+    // add the destroy the imgui created structures
+    _EnqueueForDeletion(DeletionQueue::Main, [this, imguiPool]() {
+        vkDestroyDescriptorPool(this->_device, imguiPool, nullptr);
+        ImGui_ImplVulkan_Shutdown();
+    });
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+void
+SDLWindowVulkan::_ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function)
+{
+    VkCommandBuffer cmd = _uploadContext._commandBuffer;
+
+    // begin the command buffer recording. We will use this command buffer exactly once before resetting, so we tell
+    // vulkan that
+    VkCommandBufferBeginInfo cmdBeginInfo
+        = vk_init::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+    VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+
+    // execute the function
+    function(cmd);
+
+    VK_CHECK(vkEndCommandBuffer(cmd));
+
+    VkSubmitInfo submit = vk_init::submit_info(&cmd);
+
+    // submit command buffer to the queue and execute it.
+    //  _uploadFence will now block until the graphic commands finish execution
+    VK_CHECK(vkQueueSubmit(_graphicsQueue, 1, &submit, _uploadContext._uploadFence));
+
+    vkWaitForFences(_device, 1, &_uploadContext._uploadFence, true, 9999999999);
+    vkResetFences(_device, 1, &_uploadContext._uploadFence);
+
+    // reset the command buffers inside the command pool
+    vkResetCommandPool(_device, _uploadContext._commandPool, 0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void
+SDLWindowVulkan::_EnqueueForDeletion(DeletionQueue queue, std::function<void()> func)
+{
+    assert(queue == DeletionQueue::Main);
+    _mainDeletionQueue.push_back(std::move(func));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+bool
+SDLWindowVulkan::_CreateInstance()
+{
 #if USING(VALIDATION_LAYERS)
     if (_AreValidationLayersEnabled() && !_AreInstanceLayersSupported(_validationLayers)) {
         LOG_WARN("Validation layers enabled but not supported.");
@@ -207,7 +344,7 @@ SDLWindowVulkan::_OnMainLoopExit()
     std::vector<const char*> requiredExtensionNames;
     {
         unsigned int requiredExtensionsCount = 0;
-        bool   success = SDL_Vulkan_GetInstanceExtensions(_window, &requiredExtensionsCount, nullptr);
+        bool         success = SDL_Vulkan_GetInstanceExtensions(_window, &requiredExtensionsCount, nullptr);
         ASSERT(success);
         UNUSED(success);
         requiredExtensionNames.resize(requiredExtensionsCount);
@@ -748,14 +885,15 @@ SDLWindowVulkan::_CreateGraphicsPipeline()
 
     VkShaderModule fragmentShaderModule;
     core::Scoped   scopedFragmentShader(
-        [&]() { fragmentShaderModule = gfx::createShaderModule(_device, fragShaderCode); },
+        [&]() { fragmentShaderModule = gfx::vk::createShaderModule(_device, fragShaderCode); },
         [&]() {
             vkDestroyShaderModule(_device, fragmentShaderModule, nullptr);
             fragmentShaderModule = VK_NULL_HANDLE;
         });
 
     VkShaderModule vertexShaderModule;
-    core::Scoped   scopedVertexShader([&]() { vertexShaderModule = gfx::createShaderModule(_device, vertShaderCode); },
+    core::Scoped   scopedVertexShader(
+        [&]() { vertexShaderModule = gfx::vk::createShaderModule(_device, vertShaderCode); },
         [&]() {
             vkDestroyShaderModule(_device, vertexShaderModule, nullptr);
             vertexShaderModule = VK_NULL_HANDLE;
@@ -950,16 +1088,30 @@ SDLWindowVulkan::_CreateFramebuffers()
 bool
 SDLWindowVulkan::_CreateCommandPool()
 {
-    QueueFamilyIndices queueFamilyIndices = findQueueFamilies(_physicalDevice, _surface);
+    const QueueFamilyIndices queueFamilyIndices       = findQueueFamilies(_physicalDevice, _surface);
+    const uint32_t           graphicsQueueFamilyIndex = queueFamilyIndices.optGraphicsFamily.value();
 
     VkCommandPoolCreateInfo poolInfo {};
     poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolInfo.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    poolInfo.queueFamilyIndex = queueFamilyIndices.optGraphicsFamily.value();
+    poolInfo.queueFamilyIndex = graphicsQueueFamilyIndex;
 
     if (vkCreateCommandPool(_device, &poolInfo, nullptr, &_commandPool) != VK_SUCCESS) {
         LOG_ERROR("failed to create command pool!");
         return false;
+    }
+
+    {   //
+        VkCommandPoolCreateInfo uploadCommandPoolInfo = vk_init::command_pool_create_info(graphicsQueueFamilyIndex);
+        // create pool for upload context
+        VK_CHECK(vkCreateCommandPool(_device, &uploadCommandPoolInfo, nullptr, &_uploadContext._commandPool));
+
+        _EnqueueForDeletion(
+            DeletionQueue::Main, [=]() { vkDestroyCommandPool(_device, _uploadContext._commandPool, nullptr); });
+
+        // allocate the default command buffer that we will use for the instant commands
+        VkCommandBufferAllocateInfo cmdAllocInfo = vk_init::command_buffer_allocate_info(_uploadContext._commandPool, 1);
+        VK_CHECK(vkAllocateCommandBuffers(_device, &cmdAllocInfo, &_uploadContext._commandBuffer));
     }
 
     return true;
@@ -1015,20 +1167,16 @@ SDLWindowVulkan::_RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t sw
         renderPassInfo.renderPass  = _renderPass;
         renderPassInfo.framebuffer = _swapChainFramebuffers[swapchainIndex];
 
-        const float      ratio = 0.8f;
         const VkExtent2D renderAreaExtent {
-            (uint32_t)(ratio * (1.f - animatedValue) * _swapChainExtent.width),
-            (uint32_t)(ratio * (1.f - animatedValue) * _swapChainExtent.height),
+            _swapChainExtent.width,
+            _swapChainExtent.height,
         };
-        const VkOffset2D renderAreaOffset {
-            (int32_t)(( 0.5f ) * (_swapChainExtent.width - renderAreaExtent.width)),
-            (int32_t)(( 0.5f ) * (_swapChainExtent.height - renderAreaExtent.height)),
-        };
+        const VkOffset2D renderAreaOffset {0, 0};
         renderPassInfo.renderArea.offset = renderAreaOffset;
         renderPassInfo.renderArea.extent = renderAreaExtent;
 
-        const float        clearColorValue   = 0.25f * animatedValue;
-        VkClearValue       clearColor        = {{{clearColorValue, clearColorValue, clearColorValue, 1.0f}}};
+        const float  clearColorValue   = 0.25f * animatedValue;
+        VkClearValue clearColor        = {{{clearColorValue, clearColorValue, clearColorValue, 1.0f}}};
         renderPassInfo.clearValueCount = 1;
         renderPassInfo.pClearValues    = &clearColor;
 
@@ -1046,8 +1194,8 @@ SDLWindowVulkan::_RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t sw
             (int32_t)(0.2f * animatedValue * _swapChainExtent.height),
         };
         const VkExtent2D scissorExtent {
-            (uint32_t)(0.8f * (1.f - animatedValue )* _swapChainExtent.width),
-            (uint32_t)(0.8f * (1.f - animatedValue )* _swapChainExtent.height),
+            (uint32_t)(0.8f * (1.f - animatedValue) * _swapChainExtent.width),
+            (uint32_t)(0.8f * (1.f - animatedValue) * _swapChainExtent.height),
         };
         VkRect2D scissor {};
         scissor.offset = scissorOffset;
@@ -1064,6 +1212,8 @@ SDLWindowVulkan::_RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t sw
             uint32_t firstVertex   = 0;
             uint32_t firstInstance = 0;
             vkCmdDraw(commandBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
+
+            ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
 
             vkCmdEndRenderPass(commandBuffer);
         }
@@ -1097,6 +1247,13 @@ SDLWindowVulkan::_CreateSyncObjects()
         VK_CHECK(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_imageAvailableSemaphores[i]));
         VK_CHECK(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_renderFinishedSemaphores[i]));
         VK_CHECK(vkCreateFence(_device, &fenceInfo, nullptr, &_inFlightFences[i]));
+    }
+
+    {   //
+        const VkFenceCreateInfo uploadFenceCreateInfo = vk_init::fence_create_info(false);
+        VK_CHECK(vkCreateFence(_device, &uploadFenceCreateInfo, nullptr, &_uploadContext._uploadFence));
+        _EnqueueForDeletion(
+            DeletionQueue::Main, [=]() { vkDestroyFence(_device, _uploadContext._uploadFence, nullptr); });
     }
 
     return true;

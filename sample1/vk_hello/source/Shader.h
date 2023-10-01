@@ -2,12 +2,11 @@
 
 #include "core/core.h"
 
-#include <vector>
-#include <string>
 #include <fstream>
+#include <string>
+#include <vector>
 
-namespace utils
-{
+namespace utils {
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::vector<char>
@@ -33,8 +32,8 @@ readFile(const std::string& filename)
 ////////////////////////////////////////////////////////////////////////////////
 }   // namespace utils
 
-namespace gfx
-{
+namespace gfx {
+namespace vk {
 ////////////////////////////////////////////////////////////////////////////////
 
 VkShaderModule
@@ -55,4 +54,5 @@ createShaderModule(VkDevice device, const std::vector<char>& code)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-} // namespace gfx
+}   // namespace vk {
+}   // namespace gfx

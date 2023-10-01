@@ -22,17 +22,18 @@
 ## Plan and current state
 
 1. Implement first test version from Vulkan tutorial
-    1. Here -> <https://vulkan-tutorial.com/en/Drawing_a_triangle/Graphics_pipeline_basics/Fixed_functions>
-1. Integrate IMGUI: <https://vkguide.dev/docs/extra-chapter/implementing_imgui/>
+    1. Here -> <https://vulkan-tutorial.com/Vertex_buffers/Vertex_input_description>
+1. Integrate IMGUI: <https://vkguide.dev/docs/extra-chapter/implementing_imgui/> DONE!
+1. Integrate ABC library (profiling, timers, lent_ptr...)
 1. Integrate [libshaderc](https://github.com/google/shaderc/blob/main/libshaderc/README.md) in order to be able to compile the shaders from the application itself
 1. [Abstraction](#abstraction)
-    1. GpuDevice
-      2. [Buffer](#buffer) - data (heterogeneous or homogeneous)
-      3. Texture - images to read/write from
-      4. Samplers - define how the shader retrieves data from textures/buffers
-      5. Shaders - define how data is processed
-      6. Pipeline - defines the configuration of the pipeline (i.e., shader, textures/buffers,...)
-    1. Memory allocators
+  1. GpuDevice
+  2. [Buffer](#buffer) - data (heterogeneous or homogeneous)
+  3. Texture - images to read/write from
+  4. Samplers - define how the shader retrieves data from textures/buffers
+  5. Shaders - define how data is processed
+  6. Pipeline - defines the configuration of the pipeline (i.e., shader, textures/buffers,...)
+1. Memory allocators
 
 ### Abstraction
 

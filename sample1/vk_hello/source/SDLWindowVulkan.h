@@ -12,6 +12,7 @@ namespace gfx {
 ////////////////////////////////////////////////////////////////////////////////
 
 class SDLWindowVulkan : public SDLWindow {
+    
     static constexpr int MAX_FRAMES_IN_FLIGHT = 5;
 
     VkInstance       _instance       = VK_NULL_HANDLE;
@@ -51,6 +52,16 @@ class SDLWindowVulkan : public SDLWindow {
     std::vector<VkFence>      _inFlightFences;
     uint8_t                   _currentFrameIndex = 0;
 
+private:
+    struct UploadContext {
+        VkFence         _uploadFence;
+        VkCommandPool   _commandPool;
+        VkCommandBuffer _commandBuffer;
+    };
+    UploadContext _uploadContext;
+
+    std::vector<std::function<void(void)>> _mainDeletionQueue;
+
 public:
     SDLWindowVulkan();
 
@@ -61,6 +72,16 @@ protected:
     void _DrawFrame() override;
     void _OnMainLoopExit() override;
     void _OnResize(uint32_t width, uint32_t height) override;
+
+protected:
+    void _InitImgui();
+
+    void _ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
+
+    enum class DeletionQueue {
+        Main,
+    };
+    void _EnqueueForDeletion(DeletionQueue queue, std::function<void()> func);
 
 protected:
     bool _CreateInstance();
