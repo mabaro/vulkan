@@ -1,6 +1,7 @@
 #include "SDLWindowVulkan.h"
 
 #include "Shader.h"
+#include "core/scoped.h"
 #include "gfx/vk_init.h"
 #include "gfx/vk_types.h"
 
@@ -13,7 +14,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include <algorithm>   // Necessary for std::clamp
-#include <limits>      // Necessary for std::numeric_limits
+#include <limits>   // Necessary for std::numeric_limits
 #include <optional>
 #include <set>
 
@@ -1110,7 +1111,8 @@ SDLWindowVulkan::_CreateCommandPool()
             DeletionQueue::Main, [=]() { vkDestroyCommandPool(_device, _uploadContext._commandPool, nullptr); });
 
         // allocate the default command buffer that we will use for the instant commands
-        VkCommandBufferAllocateInfo cmdAllocInfo = vk_init::command_buffer_allocate_info(_uploadContext._commandPool, 1);
+        VkCommandBufferAllocateInfo cmdAllocInfo
+            = vk_init::command_buffer_allocate_info(_uploadContext._commandPool, 1);
         VK_CHECK(vkAllocateCommandBuffers(_device, &cmdAllocInfo, &_uploadContext._commandBuffer));
     }
 

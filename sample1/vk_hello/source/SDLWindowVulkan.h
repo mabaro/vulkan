@@ -4,6 +4,7 @@
 
 #include "gfx/vk_types.h"
 
+#include <functional>
 #include <vector>
 
 #define VALIDATION_LAYERS USING(IS_DEBUG)

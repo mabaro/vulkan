@@ -1,7 +1,23 @@
 # tuto: https://medium.com/@onur.dundar1/cmake-tutorial-585dd180109b
 
 cmake_minimum_required(VERSION 3.9.1)
-project(CMakeHello)
+project(VulkanSamples)
+
+option( ENABLE_TESTS "Enable GTest" On )
+if (ENABLE_TESTS)
+    message("------- TESTS ENABLED -------")
+    include(CTest)
+    include(FetchContent)
+    FetchContent_Declare(
+        googletest
+        URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
+    )
+    # For Windows: Prevent overriding the parent project's compiler/linker settings
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+else()
+    message("------- TESTS DISABLED -------")
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
@@ -55,7 +71,7 @@ endif()
 # ARCHIVE_OUTPUT_PATH
 # CMAKE_ARCHIVE_OUTPUT_DIRECTORY
 
-add_subdirectory(lib/gfx)
+add_subdirectory(lib)
 
 # ## shaderc libshaderc
 # # include out of tree library needs binary dir as second param
@@ -88,3 +104,9 @@ target_include_directories(imgui PUBLIC "${THIRDPARTY}/imgui/")
 add_subdirectory(sdl_hello)
 
 add_subdirectory(vk_hello)
+
+############################################################
+
+if (ENABLE_TESTS)
+    enable_testing()
+endif()
