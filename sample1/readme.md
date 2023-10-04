@@ -56,6 +56,26 @@ struct Buffer {
 };
 ```
 
+#### Formats
+##### Mesh
+- Mode1
+    - 8 byte position stream (i.e., world matrix + normalized(local_vec) * a + local_vec)
+        - RGBA16 (snorm [-1..+1] model_matrix = mesh_scale_matrix * model_matrix
+    - 12 byte properties stream
+        - RGB10A2 -> normal (+bitangent sign)
+            - or XY normal | Z material_id | A bitangent sign
+        - RGB10A2 tangent(+2bit material id) -> 4 material per object
+            - or RG tangent | BA material_id
+        - [optional] RG16 UVs 16bit UNORM UVs [0..1] -> using per-model scale factor [-4..+4] 8k textures
+- Mode2
+    - 16 byte position stream
+        - RGBA16 pos
+        - RGBA8 bone index  (4 bones per vert)
+        - RGBA8 bone weight (4 bones per vert)
+    - 12 byte properties stream
+        - RGB10A2 normal (+bitangent sign)
+        - RGB10A2 tangent (+2 bit material_id)
+        - RG16 UV
 ## Libraries and tools used
 
 ### SDL
