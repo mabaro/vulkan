@@ -78,6 +78,9 @@ struct Buffer {
         - RG16 UV
 ## Libraries and tools used
 
+### Math stuff
+https://github.com/BlackMATov/vmath.hpp/blob/main/headers/vmath.hpp/vmath_vec_fun.hpp
+
 ### SDL
 - [SDL2](https://gist.github.com/YukiSnowy/dc31f47448ac61dd6aedee18b5d53858) is gonna be used for cross-platform:
   - input
