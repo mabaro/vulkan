@@ -23,19 +23,45 @@ TEST(Math, boolVec)
     EXPECT_TRUE(detail::any(bvecFalse));
 }
 
-template <typename T>
-void
-mathVecOpsHelper()
+TEST(Math, simple)
 {
-    using vec_t   = T;
-    using value_t = typename vec_t::value_t;
-
+    using namespace math;
+    using vec_t = vec<float, 2>;
     vec_t a {1, 2};
     vec_t b {3, 4};
     EXPECT_EQ((a + b), (vec_t {4, 6}));
     EXPECT_EQ((a - b), (vec_t {-2, -2}));
     EXPECT_EQ((a * b), (vec_t {3, 8}));
     EXPECT_EQ((a / b), (vec_t {1.f / 3, 2.f / 4}));
+}
+
+template <typename T>
+void
+mathVecOpsTypeHelper()
+{
+    using vec_t   = T;
+    using value_t = typename vec_t::value_t;
+
+    static const value_t values1[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    static const value_t values2[] {3, 5, 7, 9, 11, 13, 15, 17, 19, 21};
+    vec_t                a;
+    vec_t                b;
+    vec_t                sum, diff, mult, div;
+
+    for (size_t i = 0; i < vec_t::dim; ++i) {
+        a[i] = values1[i];
+        b[i] = values2[i];
+    }
+    sum  = a + b;
+    diff = a - b;
+    mult = a * b;
+    div  = a / b;
+    for (size_t i = 0; i < vec_t::dim; ++i) {
+        EXPECT_EQ(sum[i], a[i] + b[i]);
+        EXPECT_EQ(diff[i], a[i] - b[i]);
+        EXPECT_EQ(mult[i], a[i] * b[i]);
+        EXPECT_EQ(div[i], a[i] / b[i]);
+    }
 
     EXPECT_NE(a, b);
     b = a;
@@ -62,66 +88,26 @@ mathVecOpsHelper()
     c /= value_t(2);
     EXPECT_EQ(c, a / value_t(2));
 }
-TEST(Math, mathVecNOps)
+template <size_t DIM>
+void
+mathVecOpsSizeHelper()
 {
     using namespace math;
-    mathVecOpsHelper<vec<float, 2>>();
-    mathVecOpsHelper<vec<uint32_t, 2>>();
-    mathVecOpsHelper<vec<int8_t, 2>>();
+    mathVecOpsTypeHelper<vec<double, DIM>>();
+    mathVecOpsTypeHelper<vec<float, DIM>>();
+    mathVecOpsTypeHelper<vec<uint32_t, DIM>>();
+    mathVecOpsTypeHelper<vec<int8_t, DIM>>();
 }
-TEST(Math, mathVecOps)
+
+TEST(Math, multi)
 {
-    using namespace math;
-    mathVecOpsHelper<vec2<float>>();
-    mathVecOpsHelper<vec2<uint32_t>>();
-    mathVecOpsHelper<vec2<int8_t>>();
+    mathVecOpsSizeHelper<2>();
+    mathVecOpsSizeHelper<3>();
+    mathVecOpsSizeHelper<4>();
+    mathVecOpsSizeHelper<5>();
+    mathVecOpsSizeHelper<6>();
+    mathVecOpsSizeHelper<7>();
 }
-// TEST(Math, vec)
-// {
-//     using namespace math;
-//     vec2f a, b;
-//     a.x = 1.f;
-//     a.y = 2.f;
-//     b.x = a.x;
-//     b.y = a.y;
-//     EXPECT_EQ(a.x, b.x);
-//     EXPECT_EQ(a.y, b.y);
-
-//     a = b;
-//     EXPECT_EQ(a.x, b.x);
-//     EXPECT_EQ(a.y, b.y);
-// }
-
-template <typename T> struct vec2_ {
-    T x, y;
-};
-
-// TEST(Math, performance)
-// {
-//     using namespace math;
-//     abc::chrono::timer timer;
-
-//     const int COUNT = 100000;
-//     timer.reset();
-//     vec2f a, b;
-//     for (int i = 0; i < COUNT; ++i) {
-//         a.x = 1.f;
-//         a.y = 2.f;
-//         b.x = a.x;
-//         b.y = a.y;
-//     }
-//     auto elapsed1 = timer.get_elapsed_time_as<abc::chrono::microsecondsf>();
-
-//     timer.reset();
-//     for (int i = 0; i < COUNT; ++i) {
-//         a.x = 1.f;
-//         a.y = 2.f;
-//         b.x = a.x;
-//         b.y = a.y;
-//     }
-//     auto elapsed2 = timer.get_elapsed_time_as<abc::chrono::microsecondsf>();
-//     ASSERT_NEAR(elapsed1.count(), elapsed2.count(), 100.f);
-// }
 
 /////////////////////////////////////////////////////////////////////////////////
 }   // namespace

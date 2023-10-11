@@ -137,7 +137,7 @@ template <typename T, size_t DIM> struct vec {
     T&               operator[](size_t i) { return values[i]; }
 };
 
-template <typename T> struct vec2 {
+template <typename T> struct vec<T, 2> {
     static constexpr size_t dim = 2;
     using value_t               = T;
 
@@ -155,7 +155,7 @@ template <typename T> struct vec2 {
     T&               operator[](size_t i) { return (&x)[i]; }
 };
 
-template <typename T> struct vec3 {
+template <typename T> struct vec<T, 3> {
     static constexpr size_t dim = 3;
     using value_t               = T;
 
@@ -173,7 +173,7 @@ template <typename T> struct vec3 {
     T&               operator[](size_t i) { return (&x)[i]; }
 };
 
-template <typename T> struct vec4 {
+template <typename T> struct vec<T, 4> {
     static constexpr size_t dim = 4;
     using value_t               = T;
 
@@ -182,15 +182,15 @@ template <typename T> struct vec4 {
             T x, y, z, w;
         };
         struct {
-            vec3<T> xyz;
-            T       _padding1;
+            vec<T, 3> xyz;
+            T         _padding1;
         };
         struct {
             T r, g, b, a;
         };
         struct {
-            vec3<T> rgb;
-            T       _padding2;
+            vec<T, 3> rgb;
+            T         _padding2;
         };
     };
 
@@ -199,97 +199,8 @@ template <typename T> struct vec4 {
     T&               operator[](size_t i) { return (&x)[i]; }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-
-#define VEC_IMPL_EQUAL(DIM)                                                           \
-    template <typename T> bool operator==(const vec##DIM<T>& a, const vec##DIM<T>& b) \
-    {                                                                                 \
-        return detail::all(a, b, std::equal_to<T>());                                 \
-    }
-#define VEC_IMPL_NEQUAL(DIM)                                                          \
-    template <typename T> bool operator!=(const vec##DIM<T>& a, const vec##DIM<T>& b) \
-    {                                                                                 \
-        return detail::all(a, b, std::not_equal_to<T>());                             \
-    }
-#define VEC_IMPL_OP(DIM, OPNAME, OP)                                                     \
-    template <typename T> vec##DIM<T> OPNAME(const vec##DIM<T>& a, const vec##DIM<T>& b) \
-    {                                                                                    \
-        vec##DIM<T> res;                                                                 \
-        detail::cwise(res, a, b, OP);                                                    \
-        return res;                                                                      \
-    }
-#define VEC_IMPL_OP_ASSIGN(DIM, OPNAME, OP)                                        \
-    template <typename T> vec##DIM<T> OPNAME(vec##DIM<T>& a, const vec##DIM<T>& b) \
-    {                                                                              \
-        detail::cwise(a, a, b, OP);                                                \
-        return a;                                                                  \
-    }
-#define VEC_IMPL_OP_SCALAR(DIM, OPNAME, OP)                            \
-    template <typename T> vec##DIM<T> OPNAME(vec##DIM<T>& a, T scalar) \
-    {                                                                  \
-        vec##DIM<T> result = a;                                        \
-        detail::cwise(result, OP);                                     \
-        return result;                                                 \
-    }
-#define VEC_IMPL_OP_SCALAR_ASSIGN(DIM, OPNAME, OP)                     \
-    template <typename T> vec##DIM<T> OPNAME(vec##DIM<T>& a, T scalar) \
-    {                                                                  \
-        detail::cwise(a, OP);                                          \
-        return a;                                                      \
-    }
-
-VEC_IMPL_EQUAL(2)
-VEC_IMPL_NEQUAL(2)
-VEC_IMPL_OP(2, operator+, std::plus<T>())
-VEC_IMPL_OP_ASSIGN(2, operator+=, std::plus<T>())
-VEC_IMPL_OP(2, operator-, std::minus<T>())
-VEC_IMPL_OP_ASSIGN(2, operator-=, std::minus<T>())
-VEC_IMPL_OP(2, operator*, std::multiplies<T>())
-VEC_IMPL_OP_ASSIGN(2, operator*=, std::multiplies<T>())
-VEC_IMPL_OP(2, operator/, std::divides<T>())
-VEC_IMPL_OP_ASSIGN(2, operator/=, std::divides<T>())
-VEC_IMPL_OP_SCALAR(2, operator/, [scalar](const T& a) { return a / scalar; })
-VEC_IMPL_OP_SCALAR_ASSIGN(2, operator/=, [scalar](const T& a) { return a / scalar; })
-VEC_IMPL_OP_SCALAR(2, operator*, [scalar](const T& a) { return scalar * a; })
-VEC_IMPL_OP_SCALAR_ASSIGN(2, operator*=, [scalar](const T& a) { return scalar * a; })
-
-VEC_IMPL_EQUAL(3)
-VEC_IMPL_NEQUAL(3)
-VEC_IMPL_OP(3, operator+, std::plus<T>())
-VEC_IMPL_OP_ASSIGN(3, operator+=, std::plus<T>())
-VEC_IMPL_OP(3, operator-, std::minus<T>())
-VEC_IMPL_OP_ASSIGN(3, operator-=, std::minus<T>())
-VEC_IMPL_OP(3, operator*, std::multiplies<T>())
-VEC_IMPL_OP_ASSIGN(3, operator*=, std::multiplies<T>())
-VEC_IMPL_OP(3, operator/, std::divides<T>())
-VEC_IMPL_OP_ASSIGN(3, operator/=, std::divides<T>())
-VEC_IMPL_OP_SCALAR(3, operator/, [scalar](const T& a) { return a / scalar; })
-VEC_IMPL_OP_SCALAR_ASSIGN(3, operator/=, [scalar](const T& a) { return a / scalar; })
-VEC_IMPL_OP_SCALAR(3, operator*, [scalar](const T& a) { return scalar * a; })
-VEC_IMPL_OP_SCALAR_ASSIGN(3, operator*=, [scalar](const T& a) { return scalar * a; })
-
-VEC_IMPL_EQUAL(4)
-VEC_IMPL_NEQUAL(4)
-VEC_IMPL_OP(4, operator+, std::plus<T>())
-VEC_IMPL_OP_ASSIGN(4, operator+=, std::plus<T>())
-VEC_IMPL_OP(4, operator-, std::minus<T>())
-VEC_IMPL_OP_ASSIGN(4, operator-=, std::minus<T>())
-VEC_IMPL_OP(4, operator*, std::multiplies<T>())
-VEC_IMPL_OP_ASSIGN(4, operator*=, std::multiplies<T>())
-VEC_IMPL_OP(4, operator/, std::divides<T>())
-VEC_IMPL_OP_ASSIGN(4, operator/=, std::divides<T>())
-VEC_IMPL_OP_SCALAR(4, operator/, [scalar](const T& a) { return a / scalar; })
-VEC_IMPL_OP_SCALAR_ASSIGN(4, operator/=, [scalar](const T& a) { return a / scalar; })
-VEC_IMPL_OP_SCALAR(4, operator*, [scalar](const T& a) { return scalar * a; })
-VEC_IMPL_OP_SCALAR_ASSIGN(4, operator*=, [scalar](const T& a) { return scalar * a; })
-
-#undef VEC_IMPL_EQUAL
-#undef VEC_IMPL_NEQUAL
-#undef VEC_IMPL_OP
-#undef VEC_IMPL_OP_ASSIGN
-#undef VEC_IMPL_OP_SCALAR
-
 //////////////////////////////////////////////////////////////////////////////////
+
 template <typename T, size_t DIM>
 bool
 operator==(const vec<T, DIM>& a, const vec<T, DIM>& b)
@@ -416,16 +327,16 @@ make_vec(const T* begin, const T* end)
 /////////////////////////////////////////////////////////////////////////////////
 
 #define VEC_IMPL_SPECIALIZATIONS(DIM) \
-    using vec2i8   = vec2<int8_t>;    \
-    using vec2u8   = vec2<uint8_t>;   \
-    using vec2i16  = vec2<int16_t>;   \
-    using vec2u16  = vec2<uint16_t>;  \
-    using vec2i132 = vec2<int32_t>;   \
-    using vec2u132 = vec2<uint32_t>;  \
-    using vec2f    = vec2<float>;     \
-    using vec2f    = vec2<float>;     \
-    using vec2d    = vec2<double>;    \
-    using vec2d    = vec2<double>;
+    using vec##DIM##i8   = vec<int8_t, DIM>;    \
+    using vec##DIM##u8   = vec<uint8_t, DIM>;   \
+    using vec##DIM##i16  = vec<int16_t, DIM>;   \
+    using vec##DIM##u16  = vec<uint16_t, DIM>;  \
+    using vec##DIM##i132 = vec<int32_t, DIM>;   \
+    using vec##DIM##u132 = vec<uint32_t, DIM>;  \
+    using vec##DIM##f    = vec<float, DIM>;     \
+    using vec##DIM##f    = vec<float, DIM>;     \
+    using vec##DIM##d    = vec<double, DIM>;    \
+    using vec##DIM##d    = vec<double, DIM>;
 VEC_IMPL_SPECIALIZATIONS(2);
 VEC_IMPL_SPECIALIZATIONS(3);
 VEC_IMPL_SPECIALIZATIONS(4);
