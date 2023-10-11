@@ -16,6 +16,6 @@ set(HELLO_SOURCES
 )
 add_executable(sdl_hello ${HELLO_SOURCES})
 add_dependencies(sdl_hello hello_images)
-target_link_libraries(sdl_hello gfx ${SDL2_LIBRARIES})
+target_link_libraries(sdl_hello gfx SDL2)
 # set_property(TARGET sdl_hello PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 # set_property(TARGET sdl_hello PROPERTY VS_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
