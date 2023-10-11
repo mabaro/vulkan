@@ -21,6 +21,9 @@
 <!-- /TOC -->
 ## Plan and current state
 
+Implement trivial vec/matrix stuff
+#define assertuintcompare( a, comp, b )				core_assert_macro( AssertType::Assert, (a)comp( b ), "%s " #comp " %s\n\t%u, %u", #a, #b, static_cast<uint>( a ), static_cast<uint>( b ) )
+
 1. Implement first test version from Vulkan tutorial
     1. Here -> <https://vulkan-tutorial.com/Vertex_buffers/Vertex_input_description>
 1. Integrate IMGUI: <https://vkguide.dev/docs/extra-chapter/implementing_imgui/> DONE!
