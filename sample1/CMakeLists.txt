@@ -3,18 +3,40 @@
 cmake_minimum_required(VERSION 3.9.1)
 project(VulkanSamples)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+find_package(abc REQUIRED)
+
 option( ENABLE_TESTS "Enable GTest" On )
 if (ENABLE_TESTS)
     message("------- TESTS ENABLED -------")
     include(CTest)
     include(FetchContent)
-    FetchContent_Declare(
-        googletest
-        URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
-    )
-    # For Windows: Prevent overriding the parent project's compiler/linker settings
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(googletest)
+
+    # find_package(doctest QUIET)
+    # if (NOT DOCTEST_FOUND)
+    #     message("Fetching doctest on sample1")
+    #     FetchContent_Declare(doctest
+    #         GIT_REPOSITORY https://github.com/doctest/doctest.h
+    #         GIT_TAG HEAD
+    #         # OVERRIDE_FIND_PACKAGE
+    #     )
+    #     FetchContent_MakeAvailable(doctest)
+    #     set(doctest_DIR ${doctest_BINARY_DIR})
+    #     message("doctest dir: " ${doctest_BINARY_DIR})
+    #     # find_package(doctest REQUIRED) 
+    # endif (NOT DOCTEST_FOUND)
+
+    find_package(GTEST QUIET)
+    if (NOT GTEST_FOUND)
+        FetchContent_Declare(
+            googletest
+            URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
+        )
+        # For Windows: Prevent overriding the parent project's compiler/linker settings
+        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(googletest)
+    endif(NOT GTEST_FOUND)
 else()
     message("------- TESTS DISABLED -------")
 endif()
