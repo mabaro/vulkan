@@ -7,49 +7,33 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 find_package(abc REQUIRED)
 
-option( ENABLE_TESTS "Enable GTest" On )
+set(SDL_SHARED OFF)
+find_package(SDL2 REQUIRED)
+include_directories(${SDL2_INCLUDE_DIRS})
+
+set(ENV{VULKAN_SDK} "D:/0-repositories/thirdparties/vulkan_sdk")
+find_package(Vulkan REQUIRED)
+
+option( ENABLE_TESTS "Enable tests" OFF )
 if (ENABLE_TESTS)
     message("------- TESTS ENABLED -------")
     include(CTest)
-    include(FetchContent)
-
     # find_package(doctest QUIET)
-    # if (NOT DOCTEST_FOUND)
-    #     message("Fetching doctest on sample1")
-    #     FetchContent_Declare(doctest
-    #         GIT_REPOSITORY https://github.com/doctest/doctest.h
-    #         GIT_TAG HEAD
-    #         # OVERRIDE_FIND_PACKAGE
-    #     )
-    #     FetchContent_MakeAvailable(doctest)
-    #     set(doctest_DIR ${doctest_BINARY_DIR})
-    #     message("doctest dir: " ${doctest_BINARY_DIR})
-    #     # find_package(doctest REQUIRED) 
-    # endif (NOT DOCTEST_FOUND)
-
-    find_package(GTEST QUIET)
-    if (NOT GTEST_FOUND)
-        FetchContent_Declare(
-            googletest
-            URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
-        )
-        # For Windows: Prevent overriding the parent project's compiler/linker settings
-        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-        FetchContent_MakeAvailable(googletest)
-    endif(NOT GTEST_FOUND)
+    find_package(GTest QUIET)
 else()
     message("------- TESTS DISABLED -------")
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
-add_compile_options("$<$<STREQUAL:$<TARGET_PROPERTY:LINKER_LANGUAGE>,CXX>:-std=c++11>")
 
 if(MSVC)
     add_compile_options("/W4" "$<$<CONFIG:RELEASE>:/O2>")
+    add_compile_options("/EHsc")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:console")
+    add_definitions(-DUNICODE -D_UNICODE)
 else()
     add_compile_options("-Wall" "-Wextra" "$<$<CONFIG:RELEASE>:-O3>")
-    # add_compile_options("-Wall" "-Wextra")
     if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
         add_compile_options("-stdlib=libc++")
     else()
@@ -70,11 +54,6 @@ if(" ${CMAKE_SOURCE_DIR}" STREQUAL " ${CMAKE_BINARY_DIR}")
 ")
 endif()
 
-# CMAKE_SYSTEM
-# CMAKE_SYSTEM_NAME
-# CMAKE_SYSTEM_VERSION
-# CMAKE_SYSTEM_PROCESSOR
-# CMAKE_HOST_SYSTEM_NAME
 if(UNIX)
     message("This is a ${CMAKE_SYSTEM_NAME} system")
 elseif(WIN32)
@@ -86,12 +65,9 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES Windows)
     message("This is a Windows System")
 endif()
 
-## shared libraries
-# LIBRARY_OUTPUT_PATH
-# CMAKE_LIBRARY_OUTPUT_DIRECTORY
-## static libraries
-# ARCHIVE_OUTPUT_PATH
-# CMAKE_ARCHIVE_OUTPUT_DIRECTORY
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_subdirectory(lib)
 
@@ -102,9 +78,6 @@ add_subdirectory(lib)
 # set(SHADERC_SKIP_INSTALL ON)
 # set(SHADERC_SKIP_COPYRIGHT_CHECK ON)
 # add_subdirectory(../shaderc-main glslc)
-
-find_package(SDL2 REQUIRED)
-include_directories(${SDL2_INCLUDE_DIRS})
 
 ##########
 ## IMGUI
@@ -120,6 +93,7 @@ add_library(imgui
     "${THIRDPARTY}/imgui/backends/imgui_impl_sdl2.cpp"
 )
 target_include_directories(imgui PUBLIC "${THIRDPARTY}/imgui/")
+target_link_libraries(imgui PUBLIC SDL2 Vulkan::Vulkan)
 
 ############################################################
 

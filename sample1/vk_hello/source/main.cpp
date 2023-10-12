@@ -3,8 +3,12 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-int
-main(int /* argc */, char** /* argv */)
+#ifdef WIN32
+#include <tchar.h>
+int _tmain(int , TCHAR**)
+#else
+int main(int /*argc*/, char** /*argv*/)
+#endif // ABC_PLATFORM_WINDOWS_FAMILY
 {
     gfx::SDLWindowVulkan window;
     if (window.Init()) {

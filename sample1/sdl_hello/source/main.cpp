@@ -4,7 +4,7 @@
 // vk tuto https://vkguide.dev/docs/chapter-0/code_walkthrough/
 #include "TextureWrapper.h"
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <cstdio>
 
 SDL_Window *gWindow = NULL;
@@ -66,7 +66,12 @@ void Close()
 
 ////////////////////////////////////////////////////////////////////////////////
 
-int main(int /*argc*/, char ** /*argv*/)
+#ifdef WIN32
+#include <tchar.h>
+int _tmain(int , TCHAR**)
+#else
+int main(int /*argc*/, char** /*argv*/)
+#endif // ABC_PLATFORM_WINDOWS_FAMILY
 {
     if (Init())
     {
