@@ -8,7 +8,10 @@
         - [Abstraction](#abstraction)
             - [GpuDevice](#gpudevice)
             - [Buffer](#buffer)
+            - [Formats](#formats)
+                - [Mesh](#mesh)
     - [Libraries and tools used](#libraries-and-tools-used)
+        - [Math stuff](#math-stuff)
         - [SDL](#sdl)
         - [Vulkan](#vulkan)
         - [VMA vulkan memory allocator](#vma-vulkan-memory-allocator)
@@ -29,6 +32,7 @@ Implement trivial vec/matrix stuff
 1. Integrate IMGUI: <https://vkguide.dev/docs/extra-chapter/implementing_imgui/> DONE!
 1. Integrate ABC library (profiling, timers, lent_ptr...)
 1. Integrate [libshaderc](https://github.com/google/shaderc/blob/main/libshaderc/README.md) in order to be able to compile the shaders from the application itself
+1. Integrate [DXC](https://hub.docker.com/r/gwihlidal/dxc/)
 1. [Abstraction](#abstraction)
   1. GpuDevice
   2. [Buffer](#buffer) - data (heterogeneous or homogeneous)

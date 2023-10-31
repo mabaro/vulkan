@@ -80,7 +80,7 @@ int main(int /*argc*/, char** /*argv*/)
         // SDL_UpdateWindowSurface(gWindow);
 
         SDLTextureWrapper splashScreen(gWindow, gRenderer);
-        if (!splashScreen.loadFromFile("hello.bmp"))
+        if (!splashScreen.loadFromFile("res/hello.bmp"))
         {
             SDL_Log("Failed to load splash texture!\n");
         }

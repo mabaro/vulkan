@@ -30,7 +30,7 @@ file(GLOB_RECURSE VK_HELLO_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "source/
 
 add_executable(vk_hello ${VK_HELLO_SOURCES})
 add_dependencies(vk_hello shaders)
-target_link_libraries(vk_hello gfx SDL2 imgui vulkan math)
+target_link_libraries(vk_hello gfx SDL2::SDL2 imgui vulkan math)
 # how to include libshaderc static from shaderc external 
 #target_link_libraries(vk_hello gfx SDL2 vulkan shaderc)
 # set_property(TARGET vk_hello PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/bin")

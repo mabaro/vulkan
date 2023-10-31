@@ -5,15 +5,32 @@ project(VulkanSamples)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+#################################################3
+# dependencies
+
+###
 find_package(abc REQUIRED)
 
+###
 set(SDL_SHARED OFF)
-find_package(SDL2 REQUIRED)
-include_directories(${SDL2_INCLUDE_DIRS})
+find_package(SDL2 REQUIRED PATH thirdparty/SDL2)
 
-set(ENV{VULKAN_SDK} "D:/0-repositories/thirdparties/vulkan_sdk")
-find_package(Vulkan REQUIRED)
+###
+# set(ENV{VULKAN_SDK_PATH} "D:/0-repositories/thirdparties/vulkan_sdk")
+if (DEFINED SDK_VULKAN_PATH)
+    set(Vulkan_INCLUDE_DIRS ${SDK_VULKAN_PATH}/include)
+    set(Vulkan_LIBRARIES ${SDK_VULKAN_PATH}/lib)
+    set(Vulkan_FOUND "true")
+else()
+    find_package(Vulkan REQUIRED)
+endif()
+if (Vulkan_FOUND)
+    message("Vulkan FOUND @ ${Vulkan_INCLUDE_DIRS}")
+else()
+    message("Vulkan NOT FOUND - VULKAN_SDK_PATH not found")
+endif()
 
+###
 option( ENABLE_TESTS "Enable tests" OFF )
 if (ENABLE_TESTS)
     message("------- TESTS ENABLED -------")
@@ -23,6 +40,9 @@ if (ENABLE_TESTS)
 else()
     message("------- TESTS DISABLED -------")
 endif()
+
+################################################
+# compilation configuration
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
@@ -64,6 +84,9 @@ if(${CMAKE_SYSTEM_NAME} MATCHES Darwin)
 elseif(${CMAKE_SYSTEM_NAME} MATCHES Windows)
     message("This is a Windows System")
 endif()
+
+#############################################################
+# build targets
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
