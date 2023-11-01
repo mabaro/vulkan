@@ -22,13 +22,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-   - name: Fetch Vulkan SDK
+    - name: Fetch Vulkan SDK
       shell: bash
-      run: |
-            wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc
-            sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list http://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
-            sudo apt update
-            sudo apt install vulkan-sdk
+      run: sudo apt install vulkan-utils vulkan-icd-driver-intel
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -44,4 +40,3 @@ jobs:
       # Execute tests defined by the CMake configuration.
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest -C ${{env.BUILD_TYPE}}
-
