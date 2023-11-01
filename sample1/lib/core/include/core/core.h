@@ -53,6 +53,18 @@ LogFormatter(FILE* output, const char* filename, uint32_t line, const char* leve
     fprintf(output, "\n");
 }
 
+static inline void
+LogFormatter(FILE* output, const char* filename, uint32_t line, const char* level, const char* format)
+{
+    output = s_loggerConfiguration.forceOutput != nullptr ? s_loggerConfiguration.forceOutput : output;
+    if (s_loggerConfiguration.showFilename) {
+        fprintf(output, "%s:%d: ", filename, line);
+    }
+    fprintf(output, "[%s]: ", level);
+    fprintf(output, "%s", format);
+    fprintf(output, "\n");
+}
+
 }   // impl
 }   // namespace
 
