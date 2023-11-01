@@ -7,6 +7,8 @@ message("Binary dir for(${APP_NAME}): ${CMAKE_BINARY_DIR}")
 
 set(SPIRVTOOLS ${CMAKE_SOURCE_DIR}/tools/linux/bin)
 set(GLSLCOMPILER ${SPIRVTOOLS}/glslc)
+# set(DXCTOOLSPATH ${CMAKE_SOURCE_DIR}/thirdparty/dxc-artifacts/)
+# set(DXCCOMPILER LD_LIBRARY_PATH=${DXCTOOLSPATH}/lib ${DXCTOOLSPATH}/bin/dxc)
 
 add_custom_target(shaders)
 file(GLOB ShaderFiles 
@@ -24,6 +26,10 @@ foreach(shaderFile ${ShaderFiles})
         COMMAND ${GLSLCOMPILER} ${shaderFile} -o ${SHADERS_OUTPUT_DIR}/${FILENAME}.spv
         DEPENDS ${shaderFile} # Treated as relative to CMAKE_CURRENT_SOURCE_DIR
     )
+    # add_custom_command(TARGET shaders PRE_BUILD
+    #     COMMAND ${DXCCOMPILER} -spirv -T vs_6_0 -E main ${shaderFile} -Fo ${SHADERS_OUTPUT_DIR}/${FILENAME}.spv
+    #     DEPENDS ${shaderFile} # Treated as relative to CMAKE_CURRENT_SOURCE_DIR
+    # )
 endforeach()
 
 file(GLOB_RECURSE VK_HELLO_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "source/*.c*")

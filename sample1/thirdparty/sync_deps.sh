@@ -18,15 +18,21 @@ fi
 
 
 if [ "$DXC" = true ]; then
+    tar xvf dxc-artifacts.tar.gz
+    # cp dxc-artifacts/bin/dxc ../tools/linux/bin
+    # cp dxc-artifacts/lib/*.so ../tools/linux/bin
+    # ### change search path for DXC dynamic libraries
+    # chrpath -r. ../tools/linux/bin/dxc
+    ############
     # git clone --recurse-submodules -b master https://github.com/google/DirectXShaderCompiler.git $THIRDPARTY_DIR/dxc
-    pushd "dxc"
-        TRACEPARAM=--trace-source="CMakeLists.txt"
-        # EXTRAS=$(cat ../utils/cmake-predefined-config-params)
-        EXTRAS=-C cmake/caches/PredefinedParams.cmake
-        GENERATOR=-GNinja
-        cmake -S . -B build --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE ${EXTRAS} ${GENERATOR}
-        cmake --build build --config Release --target dxc .
-    popd
+    # pushd "dxc"
+    #     TRACEPARAM=--trace-source="CMakeLists.txt"
+    #     # EXTRAS=$(cat ../utils/cmake-predefined-config-params)
+    #     EXTRAS=-C cmake/caches/PredefinedParams.cmake
+    #     GENERATOR=-GNinja
+    #     cmake -S . -B build --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE ${EXTRAS} ${GENERATOR}
+    #     cmake --build build --config Release --target dxc .
+    # popd
 fi
 
 
