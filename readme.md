@@ -6,6 +6,7 @@
 - Modyfing adreno drivers: https://github.com/bylaws/libadrenotools#readme
 - Interesting
   - Memory model : https://www.khronos.org/blog/comparing-the-vulkan-spir-v-memory-model-to-cs
-
+- HLSL / legalization: https://www.lunarg.com/wp-content/uploads/2020/05/SPIR-V-Shader-Legalization-and-Size-Reduction-Using-spirv-opt_v1.2.pdf
+  
 # Raytracing stuff
 - RT in One Weekend: https://raytracing.github.io/
